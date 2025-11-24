@@ -164,9 +164,6 @@ def main():
         else ["-G", "Unix Makefiles"]
     )
 
-    cudnn_library = os.environ["CUDNN_LIBRARY"]
-    cudnn_include_dir = os.environ["CUDNN_INCLUDE_DIR"]
-
     cmake_args = (
         (ci_cmake_generator if is_CI_build else [])
         + [
@@ -200,9 +197,9 @@ def main():
             "-DWITH_NVCUVID=OFF",
             f"-DCUDA_ARCH_BIN={cuda_arch_bin}",
             f"-DCUDA_ARCH_PTX={cuda_arch_ptx}",
-            f"-DCUDNN_LIBRARY={cudnn_library}",
-            f"-DCUDNN_INCLUDE_DIR={cudnn_include_dir}",
-        ]
+            "-DWITH_CUDNN=OFF",
+            "-DBUILD_LIST=bgsegm,cudabgsegm,cudacodec,cudafilters,cudaimgproc,cudev,imgcodecs,imgproc,python3,text,video,videoio"
+       ]
         + (
             # CMake flags for windows/arm64 build
             ["-DCMAKE_GENERATOR_PLATFORM=ARM64",
