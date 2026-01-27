@@ -22,19 +22,14 @@ def main():
     build_java = "ON" if get_build_env_var_by_name("java") else "OFF"
     build_rolling = get_build_env_var_by_name("rolling")
 
-    # TODO(@Breakthrough): What architectures should we ship?
-    # fermi     = "2.0"
-    # kepler    = "3.0;3.5;3.7"
-    # maxwell   = "5.0;5.2"
-    # pascal    = "6.0;6.1"
-    # volta     = "7.0"
-    # turing    = "7.5"
-    # ampere    = "8.0;8.6"
-    # lovelace  = "8.9"
-    # hopper    = "9.0"
-    # blackwell =  "10.0;12.0"
-    cuda_arch_bin = "5.0;5.2;6.0;6.1;7.0;7.5,8.0"
-    cuda_arch_ptx = "8.0"
+    # CUDA architecture configuration - can be overridden via environment variables
+    # CUDA 12.x supports: 5.0+ (Maxwell through Hopper)
+    # CUDA 13.x supports: 7.5+ (Turing through Hopper)
+    # Reference architectures:
+    #   maxwell=5.0;5.2, pascal=6.0;6.1, volta=7.0, turing=7.5,
+    #   ampere=8.0;8.6, lovelace=8.9, hopper=9.0
+    cuda_arch_bin = os.environ.get("CUDA_ARCH_BIN", "7.5;8.0;8.6;8.9;9.0")
+    cuda_arch_ptx = os.environ.get("CUDA_ARCH_PTX", "9.0")
 
     # NOTE: since 2.3.0 numpy upgraded from manylinux2014 to manylinux_2_28
     # see https://numpy.org/doc/stable/release/2.3.0-notes.html#numpy-2-3-0-release-notes
@@ -159,7 +154,7 @@ def main():
     files_outside_package_dir = {"cv2": ["LICENSE.txt", "LICENSE-3RD-PARTY.txt","*.dll"]}
 
     ci_cmake_generator = (
-        ["-G", "Visual Studio 17 2022"]
+        ["-G", "Visual Studio 17 2022", "-T", "v143"]
         if os.name == "nt"
         else ["-G", "Unix Makefiles"]
     )
@@ -203,6 +198,14 @@ def main():
             f"-DCUDNN_LIBRARY={cudnn_library}",
             f"-DCUDNN_INCLUDE_DIR={cudnn_include_dir}",
         ]
+        + (
+            # CUDA 12.9+ requires MSVC's conformant preprocessor for CCCL headers.
+            # -Xcompiler passes the flag from nvcc to the host compiler (MSVC).
+            # See: https://github.com/NVIDIA/cccl/issues/5166
+            ["-DCUDA_NVCC_FLAGS=-Xcompiler /Zc:preprocessor"]
+            if sys.platform == "win32"
+            else []
+        )
         + (
             # CMake flags for windows/arm64 build
             ["-DCMAKE_GENERATOR_PLATFORM=ARM64",

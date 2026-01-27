@@ -12,6 +12,7 @@ name: Windows CUDA x64
 on:
   workflow_dispatch:
     inputs:
+      # TODO: Add cuda_version input to allow running only CUDA 12 or 13 builds for debugging
       # TODO: Right now we don't correctly determine when things have changed and we require a
       # rebuild, so for now we just manually trigger rebuilds between runs.
       restore_build_cache:
@@ -33,12 +34,35 @@ on:
 
 jobs:
   Build:
-    runs-on: windows-2025
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       fail-fast: false
       matrix:
         python-version: ['3.13']
         platform: [x64]
+        cuda-version: ['12']
+        include:
+          # CUDA 12: Supports Maxwell (5.0) through Blackwell (10.0)
+          - cuda-version: '12'
+            runs-on: 'windows-2025'
+            cuda-installer: 'cuda_12.9.1_windows_network.exe'
+            cuda-path-version: 'v12.9'
+            cudnn-archive: 'cudnn-windows-x86_64-9.18.1.3_cuda12-archive.zip'
+            cudnn-folder: 'cudnn-windows-x86_64-9.18.1.3_cuda12-archive'
+            cuda-arch-bin: '5.0;5.2;6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0;10.0'
+            cuda-arch-ptx: '10.0'
+            cache-key: 'nvidia-deps-cuda-12.9.1-cudnn-9.18.1.3'
+          # TODO: Re-enable CUDA 13 after updating to OpenCV 4.13+
+          # CUDA 13: Supports Turing (7.5) through Blackwell (12.0)
+          # - cuda-version: '13'
+          #   runs-on: 'windows-2025'
+          #   cuda-installer: 'cuda_13.1.1_windows_network.exe'
+          #   cuda-path-version: 'v13.1'
+          #   cudnn-archive: 'cudnn-windows-x86_64-9.18.1.3_cuda13-archive.zip'
+          #   cudnn-folder: 'cudnn-windows-x86_64-9.18.1.3_cuda13-archive'
+          #   cuda-arch-bin: '7.5;8.0;8.6;8.9;9.0;10.0;12.0'
+          #   cuda-arch-ptx: '12.0'
+          #   cache-key: 'nvidia-deps-cuda-13.1.1-cudnn-9.18.1.3'
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       SDIST: 0
@@ -46,6 +70,8 @@ jobs:
       ENABLE_CONTRIB: 1
       ENABLE_ROLLING: ${{ inputs.rolling_build && 1 || 0 }}
       OPENCV_TEST_DATA_PATH: ${{ github.workspace }}\opencv_extra\testdata
+      CUDA_ARCH_BIN: ${{ matrix.cuda-arch-bin }}
+      CUDA_ARCH_PTX: ${{ matrix.cuda-arch-ptx }}
     steps:
     - name: Cleanup
       shell: bash
@@ -72,7 +98,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: .deps/Nvidia
-        key: nvidia-deps-cuda-12.4.0-cudnn-8.9.7.29
+        key: ${{ matrix.cache-key }}
     - name: Clone NVIDIA dependencies
       if: steps.cache-nvidia-deps.outputs.cache-hit != 'true'
       env:
@@ -85,27 +111,26 @@ jobs:
       shell: bash
     - name: 🔧 Install NVIDIA CUDA Toolkit
       run: |
-        $installer_path = ".deps/Nvidia/cuda_12.4.0_windows_network.exe"
+        $installer_path = ".deps/Nvidia/${{ matrix.cuda-installer }}"
         if (-not (Test-Path $installer_path)) {
           throw "CUDA Toolkit installer not found at $installer_path"
         }
-        echo "Installing CUDA Toolkit silently..."
-        $arguments = "-s nvcc_12.4 cudart_12.4 cublas_12.4 cublas_dev_12.4 cufft_12.4 cufft_dev_12.4 npp_12.4 npp_dev_12.4"
-        Start-Process -FilePath $installer_path -ArgumentList $arguments -Wait -NoNewWindow
+        echo "Installing CUDA ${{ matrix.cuda-version }} Toolkit silently..."
+        Start-Process -FilePath $installer_path -ArgumentList "-s" -Wait -NoNewWindow
         echo "Adding CUDA to PATH..."
-        $CUDA_PATH = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4"
+        $CUDA_PATH = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\${{ matrix.cuda-path-version }}"
         echo "CUDA_PATH=$CUDA_PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
         Copy-Item -Path "$CUDA_PATH/bin/*" -Destination .  -Include "*.dll"
       shell: pwsh
     - name: 🔧 Install NVIDIA CuDNN
       run: |
-        $cudnn_path = ".deps/Nvidia/cudnn-windows-x86_64-8.9.7.29_cuda12-archive.zip"
+        $cudnn_path = ".deps/Nvidia/${{ matrix.cudnn-archive }}"
         if (-not (Test-Path $cudnn_path)) {
           throw "CuDNN archive not found at $cudnn_path"
         }
-        echo "Installing CuDNN..."
+        echo "Installing CuDNN for CUDA ${{ matrix.cuda-version }}..."
         7z x $cudnn_path
-        $CUDNN_PATH = "D:/a/opencv-python-cuda/opencv-python-cuda/cudnn-windows-x86_64-8.9.7.29_cuda12-archive"
+        $CUDNN_PATH = "D:/a/opencv-python-cuda/opencv-python-cuda/${{ matrix.cudnn-folder }}"
         echo "CUDNN_LIBRARY=$CUDNN_PATH/lib/x64/cudnn.lib" | Out-File -FilePath $env:GITHUB_ENV -Append
         echo "CUDNN_INCLUDE_DIR=$CUDNN_PATH/include" | Out-File -FilePath $env:GITHUB_ENV -Append
         Copy-Item -Path "$CUDNN_PATH/bin/*" -Destination .  -Include "*.dll"
@@ -116,9 +141,9 @@ jobs:
       if: ${{ inputs.restore_build_cache && !inputs.rolling_build }}
       with:
         path: _skbuild
-        key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ hashFiles('**/CMakeLists.txt') }}
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.python-version }}-
+          ${{ runner.os }}-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-
 
     - name: Build a package
       # CMake 3.25 regression fix. See https://stackoverflow.com/questions/74162633/problem-compiling-from-source-opencv-with-mvsc2019-in-64-bit-version
@@ -140,11 +165,11 @@ jobs:
       if: ${{ inputs.save_build_cache && !inputs.rolling_build }}
       with:
         path: _skbuild
-        key: ${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ hashFiles('**/CMakeLists.txt') }}
     - name: Saving all wheels
       uses: actions/upload-artifact@v4
       with:
-        name: wheel-cuda-${{ matrix.platform }}
+        name: wheel-cuda${{ matrix.cuda-version }}-${{ matrix.platform }}
         path: wheelhouse/opencv*
 
   Test:
@@ -158,6 +183,7 @@ jobs:
       matrix:
         python-version: ['3.12']
         platform: [x64]
+        cuda-version: ['12']  # TODO: Re-enable '13' after updating to OpenCV 4.13+
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       OPENCV_TEST_DATA_PATH: ${{ github.workspace }}\opencv_extra\testdata
@@ -182,7 +208,7 @@ jobs:
     - name: Download a wheel accordingly to matrix
       uses: actions/download-artifact@v4
       with:
-        name: wheel-cuda-${{ matrix.platform }}
+        name: wheel-cuda${{ matrix.cuda-version }}-${{ matrix.platform }}
         path: wheelhouse/
     - name: Package installation
       run: |
