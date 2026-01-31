@@ -162,6 +162,11 @@ def main():
     cudnn_library = os.environ["CUDNN_LIBRARY"]
     cudnn_include_dir = os.environ["CUDNN_INCLUDE_DIR"]
 
+    # Video Codec SDK paths for NVCUVID/NVCUVENC (optional, enables hardware video decode/encode)
+    nvcuvid_library = os.environ.get("CUDA_nvcuvid_LIBRARY", "")
+    nvencodeapi_library = os.environ.get("CUDA_nvencodeapi_LIBRARY", "")
+    nvcuvid_include_dir = os.environ.get("NVCUVID_INCLUDE_DIR", "")
+
     cmake_args = (
         (ci_cmake_generator if is_CI_build else [])
         + [
@@ -191,13 +196,23 @@ def main():
             "-DPYTHON3_LIMITED_API=ON",
             "-DBUILD_OPENEXR=ON",
             "-DWITH_CUDA=ON",
-            # TODO(@Breakthrough): Download and install the required dependencies to enable this in build_wheels_windows.yml.
-            "-DWITH_NVCUVID=OFF",
+            "-DWITH_NVCUVID=ON",
+            "-DWITH_NVCUVENC=ON",
             f"-DCUDA_ARCH_BIN={cuda_arch_bin}",
             f"-DCUDA_ARCH_PTX={cuda_arch_ptx}",
             f"-DCUDNN_LIBRARY={cudnn_library}",
             f"-DCUDNN_INCLUDE_DIR={cudnn_include_dir}",
         ]
+        + (
+            # Video Codec SDK paths for hardware video decode/encode support
+            [
+                f"-DCUDA_nvcuvid_LIBRARY={nvcuvid_library}",
+                f"-DCUDA_nvencodeapi_LIBRARY={nvencodeapi_library}",
+                f"-DCMAKE_INCLUDE_PATH={nvcuvid_include_dir}",
+            ]
+            if nvcuvid_library and nvcuvid_include_dir
+            else []
+        )
         + (
             # CUDA 12.9+ requires MSVC's conformant preprocessor for CCCL headers.
             # -Xcompiler passes the flag from nvcc to the host compiler (MSVC).
