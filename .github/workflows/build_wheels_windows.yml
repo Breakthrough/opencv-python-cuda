@@ -43,8 +43,6 @@ jobs:
         cuda-version: ['12']
         include:
           # CUDA 12: Supports Maxwell (5.0) through Blackwell (10.0)
-          # TODO(@Breakthrough): Expand PTX legacy support back to 5.0, it doesn't make the final
-          # distribution that much larger and may help users with older GPUs.
           - cuda-version: '12'
             runs-on: 'windows-2025'
             cuda-installer: 'cuda_12.9.1_windows_network.exe'
