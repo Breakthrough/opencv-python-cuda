@@ -33,6 +33,7 @@
 PTX is forward-compatible only (e.g. PTX 10.0 works on GPUs ≥10.0, not older). SASS is required for older GPUs that are lower than the PTX version. A GPU needs either matching SASS or older PTX which it can JIT compile.
 
 
+
 ## References
 
 - [CUDA Toolkit Archive](https://developer.nvidia.com/cuda-toolkit-archive)
