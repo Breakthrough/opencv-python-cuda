@@ -177,6 +177,22 @@ jobs:
         python setup.py $SKIP_CMAKE bdist_wheel --py-limited-api=cp37 --dist-dir="$PWD\wheelhouse" -v
       shell: pwsh
 
+    - name: Repack wheel with LZMA compression
+      run: |
+        for whl in wheelhouse/opencv*.whl; do
+          src_size=$(stat -c%s "$whl")
+          echo "Repacking $(basename "$whl") ($(numfmt --to=iec $src_size))..."
+          tmpdir=$(mktemp -d)
+          7z x -o"$tmpdir" "$whl" -y > /dev/null
+          rm "$whl"
+          (cd "$tmpdir" && 7z a -tzip -mm=LZMA -mx=5 "$OLDPWD/$whl" . > /dev/null)
+          rm -rf "$tmpdir"
+          dst_size=$(stat -c%s "$whl")
+          saved=$((src_size - dst_size))
+          echo "Done: $(numfmt --to=iec $dst_size) (saved $(numfmt --to=iec $saved))"
+        done
+      shell: bash
+
     - name: Save build artifacts to cache
       uses: actions/cache/save@v3
       if: ${{ inputs.save_build_cache && !inputs.rolling_build }}
