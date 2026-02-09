@@ -106,6 +106,14 @@ gh run view <run-id> -R Breakthrough/opencv-python-cuda
 
 ---
 
+## Wheel Compression
+
+The build workflow repacks the output wheel using LZMA (`ZIP_LZMA`) compression instead of the default DEFLATE. This reduces the wheel size by ~35%, which is necessary to stay under the 2 GiB GitHub release file size limit.
+
+While the [wheel spec (PEP 427)](https://peps.python.org/pep-0427/) defines wheels as ZIP archives, it does not specify which ZIP compression methods are permitted. In practice, LZMA works because both pip and uv delegate decompression to their respective ZIP libraries (Python's `zipfile` module and Rust's `zip` crate), both of which support LZMA natively. This has been verified with pip (anything compatible the standard [`zipfile` module](https://docs.python.org/3/library/zipfile.html)) and uv (which uses the [`zip` crate](https://crates.io/crates/zip)).
+
+---
+
 ## Reference: Git Config for Remotes
 
 After setup, your `.git/config` remote sections should look like:
