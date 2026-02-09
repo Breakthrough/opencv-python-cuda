@@ -24,7 +24,7 @@ on:
         description: "Save build cache."
         required: false
         type: boolean
-        default: true
+        default: false
       rolling_build:
         description: "Use latest commit from upstream OpenCV repo. Cache settings will be ignored."
         required: false
@@ -124,7 +124,7 @@ jobs:
         echo "Adding CUDA to PATH..."
         $CUDA_PATH = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\${{ matrix.cuda-path-version }}"
         echo "CUDA_PATH=$CUDA_PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
-        Copy-Item -Path "$CUDA_PATH/bin/*" -Destination .  -Include "*.dll"
+        Copy-Item -Path "$CUDA_PATH\bin\*.dll" -Destination .
       shell: pwsh
     - name: 🔧 Install NVIDIA CuDNN
       run: |
@@ -161,6 +161,35 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ hashFiles('**/CMakeLists.txt') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-
+
+    - name: Remove unused CUDA DLLs
+      # Only bundle CUDA DLLs that cv2.pyd actually needs (determined via PE import analysis).
+      # This removes ~1.3 GB of unused libraries (cusparse, cusolver, curand, nvrtc, etc.)
+      run: |
+        $keep = @(
+          "cublas64_*", "cublasLt64_*", "cudart64_*", "cudnn*", "cufft64_*",
+          "nppc64_*", "nppial64_*", "nppicc64_*", "nppidei64_*", "nppif64_*",
+          "nppig64_*", "nppim64_*", "nppist64_*", "nppitc64_*"
+        )
+        # Remove from project root (where setup.py picks up *.dll)
+        # and recursively from _skbuild (cmake-install and setuptools staging dirs)
+        foreach ($dir in @(".", "_skbuild")) {
+          Get-ChildItem -Path $dir -Filter "*.dll" -Recurse -ErrorAction SilentlyContinue | Where-Object {
+            $name = $_.Name
+            $is_cuda = $name -match '^\w+64_\d'
+            $is_kept = $false
+            foreach ($pattern in $keep) {
+              if ($name -like $pattern) { $is_kept = $true; break }
+            }
+            $is_cuda -and -not $is_kept
+          } | ForEach-Object {
+            $size = [math]::Round($_.Length / 1MB)
+            $rel = Resolve-Path -Relative $_.FullName
+            echo "Removing $rel (${size} MB)"
+            Remove-Item $_.FullName
+          }
+        }
+      shell: pwsh
 
     - name: Build a package
       # CMake 3.25 regression fix. See https://stackoverflow.com/questions/74162633/problem-compiling-from-source-opencv-with-mvsc2019-in-64-bit-version
