@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUDA Compatibility Reference | opencv-python-cuda</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><a href="index.html">opencv-python-cuda</a></h1>
+            <p>CUDA Compatibility Reference</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <section class="content-section">
+                <h2>CUDA Toolkit vs Compute Capability Support</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>CUDA Version</th>
+                            <th>Min Compute</th>
+                            <th>Max Compute</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>13.x</td>
+                            <td>7.5</td>
+                            <td>12.0+</td>
+                            <td>Drops Maxwell, Pascal, Volta</td>
+                        </tr>
+                        <tr>
+                            <td>12.x</td>
+                            <td>5.0</td>
+                            <td>10.0+</td>
+                            <td>Current LTS, drops Kepler</td>
+                        </tr>
+                        <tr>
+                            <td>11.x</td>
+                            <td>3.5</td>
+                            <td>8.6+</td>
+                            <td>Legacy, includes Kepler</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="content-section">
+                <h2>GPU Architectures</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Compute Capability</th>
+                            <th>Architecture</th>
+                            <th>Example GPUs</th>
+                            <th>Released</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>10.0</td>
+                            <td>Blackwell</td>
+                            <td>RTX 50 series</td>
+                            <td>2025</td>
+                        </tr>
+                        <tr>
+                            <td>9.0</td>
+                            <td>Hopper</td>
+                            <td>H100, H200</td>
+                            <td>2022</td>
+                        </tr>
+                        <tr>
+                            <td>8.9</td>
+                            <td>Ada Lovelace</td>
+                            <td>RTX 40 series</td>
+                            <td>2022</td>
+                        </tr>
+                        <tr>
+                            <td>8.6</td>
+                            <td>Ampere (consumer)</td>
+                            <td>RTX 30 series</td>
+                            <td>2020</td>
+                        </tr>
+                        <tr>
+                            <td>8.0</td>
+                            <td>Ampere (datacenter)</td>
+                            <td>A100, A30</td>
+                            <td>2020</td>
+                        </tr>
+                        <tr>
+                            <td>7.5</td>
+                            <td>Turing</td>
+                            <td>RTX 20 series, GTX 16 series</td>
+                            <td>2018</td>
+                        </tr>
+                        <tr>
+                            <td>7.0</td>
+                            <td>Volta</td>
+                            <td>V100, Titan V</td>
+                            <td>2017</td>
+                        </tr>
+                        <tr>
+                            <td>6.1</td>
+                            <td>Pascal (consumer)</td>
+                            <td>GTX 10 series</td>
+                            <td>2016</td>
+                        </tr>
+                        <tr>
+                            <td>6.0</td>
+                            <td>Pascal (datacenter)</td>
+                            <td>P100</td>
+                            <td>2016</td>
+                        </tr>
+                        <tr>
+                            <td>5.2</td>
+                            <td>Maxwell v2</td>
+                            <td>GTX 900 series, Titan X</td>
+                            <td>2014</td>
+                        </tr>
+                        <tr>
+                            <td>5.0</td>
+                            <td>Maxwell v1</td>
+                            <td>GTX 750 Ti</td>
+                            <td>2014</td>
+                        </tr>
+                        <tr>
+                            <td>3.5</td>
+                            <td>Kepler</td>
+                            <td>GTX 600/700 series</td>
+                            <td>2012</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="content-section">
+                <h2>SASS vs PTX</h2>
+                <ul>
+                    <li><strong>SASS</strong> (Shader Assembly): Native GPU code, runs directly on matching architecture</li>
+                    <li><strong>PTX</strong> (Parallel Thread Execution): Intermediate code, JIT-compiled at runtime</li>
+                </ul>
+                <p>
+                    PTX is forward-compatible only (e.g. PTX 10.0 works on GPUs &ge;10.0, not older).
+                    SASS is required for older GPUs that are lower than the PTX version.
+                    A GPU needs either matching SASS or older PTX which it can JIT compile.
+                </p>
+            </section>
+
+            <section class="content-section">
+                <h2>References</h2>
+                <ul>
+                    <li><a href="https://developer.nvidia.com/cuda-toolkit-archive" target="_blank">CUDA Toolkit Archive</a></li>
+                    <li><a href="https://developer.nvidia.com/cuda-gpus" target="_blank">CUDA GPUs - Compute Capability</a></li>
+                    <li><a href="https://developer.nvidia.com/cudnn-archive" target="_blank">CuDNN Archive</a></li>
+                    <li><a href="https://developer.nvidia.com/video-codec-sdk" target="_blank">Video Codec SDK</a></li>
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Breakthrough. All rights reserved. Based on the official <a href="https://github.com/opencv/opencv-python">opencv-python</a> project.</p>
+        </div>
+    </footer>
+
+</body>
+</html>
