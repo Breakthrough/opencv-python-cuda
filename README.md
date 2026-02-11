@@ -1,10 +1,10 @@
 ## `opencv-python-cuda`
 
-Download: [Latest Release (4.12.0-dev0)](https://github.com/Breakthrough/opencv-python-cuda/releases/tag/4.12.0-dev0)
+Download: [Latest Release (4.12.0-dev1)](https://github.com/Breakthrough/opencv-python-cuda/releases/tag/4.12.0-dev1)
 
 ## What is `opencv-python-cuda`?
 
-Pre-built NVIDIA® CUDA™ enabled OpenCV packages for Python that come with all batteries included. This is a fork of [the official opencv-python project](https://github.com/opencv/opencv-python). Right now packages are only produced for Windows x64, and devices must be Turing class (GeForce 2000 series) or newer.  Once installed via `pip` (or another Python package manager like `uv`), the following should *just work*:
+Pre-built NVIDIA® CUDA™ enabled OpenCV packages for Python that come with all batteries included. This is a fork of [the official opencv-python project](https://github.com/opencv/opencv-python). Right now packages are only produced for Windows x64, and devices must be Maxwell class (GeForce 900 series) or newer.  Once installed via `pip` (or another Python package manager like `uv`), the following should *just work*:
 
 ```
 import cv2
@@ -52,15 +52,3 @@ All wheels are distributed with [FFmpeg](http://ffmpeg.org) licensed under the [
 Non-headless Linux wheels ship with [Qt 5](http://doc.qt.io/qt-5/lgpl.html) licensed under the [LGPLv3](http://www.gnu.org/licenses/lgpl-3.0.html).
 
 The packages include also other binaries. Full list of licenses can be found from [LICENSE-3RD-PARTY.txt](https://github.com/opencv/opencv-python/blob/master/LICENSE-3RD-PARTY.txt).
-
-### Supported Python versions
-
-Python 3.x compatible pre-built wheels are provided for the officially supported Python versions (not in EOL):
-
-- 3.7
-- 3.8
-- 3.9
-- 3.10
-- 3.11
-- 3.12
-- 3.13

@@ -13,7 +13,7 @@
     <header>
         <div class="container">
             <h1>opencv-python-cuda</h1>
-            <p>Pre-built NVIDIA® CUDA™ enabled OpenCV packages for Python.</p>
+            <p>Standalone NVIDIA® CUDA™ enabled OpenCV packages for Python.</p>
         </div>
     </header>
 
@@ -21,15 +21,11 @@
         <div class="container">
             <section class="download-section">
                 <h2>Download</h2>
-                <p class="version">Latest Release: 4.12.0-dev0</p>
+                <p class="version">Latest Release: 4.12.0-dev1</p>
                 <div class="platform-selection">
                     <div class="platform">
                         <h3>Windows</h3>
-                        <a href="https://github.com/Breakthrough/opencv-python-cuda/releases/tag/4.12.0-dev0" class="download-button">x86_64</a>
-                    </div>
-                    <div class="platform">
-                        <h3>Linux</h3>
-                        <a href="#" class="download-button disabled">x86_64 (Coming Soon)</a>
+                        <a href="https://github.com/Breakthrough/opencv-python-cuda/releases/tag/4.12.0-dev1" class="download-button">x86_64</a>
                     </div>
                 </div>
                 <div class="eula">
@@ -45,17 +41,29 @@
                     Currently, packages are only produced for Windows x64, and devices must be Maxwell class (GeForce 900 series) or newer.
                 </p>
                 <p>
+                    The wheel is fully standalone &mdash; no CUDA Toolkit, cuDNN, or any other NVIDIA software needs to be installed on your system.
+                    All required runtime libraries are bundled directly in the package. Just install the <code>.whl</code> file and you're ready to go.
+                </p>
+                <p>
                     Once installed via <code>pip</code> (or another Python package manager like <code>uv</code>), the following should just work:
                 </p>
                 <pre><code>import cv2
 print(cv2.cuda.getCudaEnabledDeviceCount())</code></pre>
+            </section>
+
+            <section class="about-section">
+                <h2>Documentation</h2>
+                <ul class="doc-links">
+                    <li><a href="cuda-compatibility.html">CUDA Compatibility Reference</a> &mdash; GPU architectures, compute capabilities, and CUDA toolkit support</li>
+                    <li><a href="workflow.html">Workflow Guide</a> &mdash; Repository setup, triggering builds, and wheel compression</li>
+                </ul>
             </section>
         </div>
     </main>
 
     <footer>
         <div class="container">
-            <p>&copy; 2025 Breakthrough. All rights reserved. Based on the official <a href="https://github.com/opencv/opencv-python">opencv-python</a> project.</p>
+            <p>&copy; 2026 Breakthrough. All rights reserved. Based on the official <a href="https://github.com/opencv/opencv-python">opencv-python</a> project.</p>
         </div>
     </footer>
 

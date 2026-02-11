@@ -5,7 +5,9 @@ on:
     branches:
       - 4.x-cuda
     paths:
-      - 'docs/**'
+      - 'docs/**.html'
+      - 'docs/**.css'
+      - 'docs/**.js'
   workflow_dispatch:
 
 jobs:
@@ -26,6 +28,10 @@ jobs:
           git checkout gh-pages
           mv -f docs-tmp/* .
           git add *
-          git commit -m "[docs] @${{ github.triggering_actor }}: Update Documentation" \
-            -m "Source: ${{ github.ref_name }} (${{ github.sha }})"
-          git push
+          if git diff --cached --quiet; then
+            echo "No changes to deploy."
+          else
+            git commit -m "[docs] @${{ github.triggering_actor }}: Update Documentation" \
+              -m "Source: ${{ github.ref_name }} (${{ github.sha }})"
+            git push
+          fi
