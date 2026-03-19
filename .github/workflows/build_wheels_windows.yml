@@ -206,6 +206,7 @@ jobs:
         python setup.py $SKIP_CMAKE bdist_wheel --py-limited-api=cp37 --dist-dir="$PWD\wheelhouse" -v
       shell: pwsh
 
+      # TODO(@Breakthrough): This seems to not work with `uv`...
     - name: Repack wheel with LZMA compression
       run: |
         for whl in wheelhouse/opencv*.whl; do
