@@ -113,7 +113,7 @@ jobs:
         ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
         git clone git@github.com:Breakthrough/opencv-python-cuda-deps.git .deps
       shell: bash
-    - name: 🔧 Install NVIDIA CUDA Toolkit
+    - name: Install NVIDIA CUDA Toolkit
       run: |
         $installer_path = ".deps/Nvidia/${{ matrix.cuda-installer }}"
         if (-not (Test-Path $installer_path)) {
@@ -126,7 +126,7 @@ jobs:
         echo "CUDA_PATH=$CUDA_PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
         Copy-Item -Path "$CUDA_PATH\bin\*.dll" -Destination .
       shell: pwsh
-    - name: 🔧 Install NVIDIA CuDNN
+    - name: Install NVIDIA CuDNN
       run: |
         $cudnn_path = ".deps/Nvidia/${{ matrix.cudnn-archive }}"
         if (-not (Test-Path $cudnn_path)) {
@@ -139,7 +139,7 @@ jobs:
         echo "CUDNN_INCLUDE_DIR=$CUDNN_PATH/include" | Out-File -FilePath $env:GITHUB_ENV -Append
         Copy-Item -Path "$CUDNN_PATH/bin/x64/*" -Destination .  -Include "*.dll"
       shell: pwsh
-    - name: 🔧 Install NVIDIA Video Codec SDK
+    - name: Install NVIDIA Video Codec SDK
       run: |
         $sdk_path = ".deps/Nvidia/${{ matrix.video-codec-sdk-archive }}"
         if (-not (Test-Path $sdk_path)) {
@@ -169,7 +169,7 @@ jobs:
         $keep = @(
           "cublas64_*", "cublasLt64_*", "cudart64_*", "cudnn*", "cufft64_*",
           "nppc64_*", "nppial64_*", "nppicc64_*", "nppidei64_*", "nppif64_*",
-          "nppig64_*", "nppim64_*", "nppist64_*", "nppitc64_*"
+          "nppig64_*", "nppim64_*", "nppist64_*", "nppitc64_*", "nvcuvid*"
         )
         # Remove from project root (where setup.py picks up *.dll)
         # and recursively from _skbuild (cmake-install and setuptools staging dirs)
@@ -205,23 +205,6 @@ jobs:
         }
         python setup.py $SKIP_CMAKE bdist_wheel --py-limited-api=cp37 --dist-dir="$PWD\wheelhouse" -v
       shell: pwsh
-
-      # TODO(@Breakthrough): This seems to not work with `uv`...
-    - name: Repack wheel with LZMA compression
-      run: |
-        for whl in wheelhouse/opencv*.whl; do
-          src_size=$(stat -c%s "$whl")
-          echo "Repacking $(basename "$whl") ($(numfmt --to=iec $src_size))..."
-          tmpdir=$(mktemp -d)
-          7z x -o"$tmpdir" "$whl" -y > /dev/null
-          rm "$whl"
-          (cd "$tmpdir" && 7z a -tzip -mm=LZMA -mx=5 "$OLDPWD/$whl" . > /dev/null)
-          rm -rf "$tmpdir"
-          dst_size=$(stat -c%s "$whl")
-          saved=$((src_size - dst_size))
-          echo "Done: $(numfmt --to=iec $dst_size) (saved $(numfmt --to=iec $saved))"
-        done
-      shell: bash
 
     - name: Save build artifacts to cache
       uses: actions/cache/save@v3
