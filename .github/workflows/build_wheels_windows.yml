@@ -151,6 +151,13 @@ jobs:
         echo "CUDA_nvcuvid_LIBRARY=$SDK_PATH/Lib/win/x64/nvcuvid.lib" | Out-File -FilePath $env:GITHUB_ENV -Append
         echo "CUDA_nvencodeapi_LIBRARY=$SDK_PATH/Lib/win/x64/nvencodeapi.lib" | Out-File -FilePath $env:GITHUB_ENV -Append
         echo "NVCUVID_INCLUDE_DIR=$SDK_PATH/Interface" | Out-File -FilePath $env:GITHUB_ENV -Append
+        # OpenCV's WITH_NVCUVID/WITH_NVCUVENC detection only searches the CUDA toolkit
+        # include/lib dirs (find_path); it ignores CMAKE_INCLUDE_PATH and CUDA_nvcuvid_LIBRARY.
+        # Stage the SDK headers and import libs into the toolkit tree so detection succeeds,
+        # otherwise the codec is silently compiled out ("NVCUVID: Header not found").
+        echo "Staging Video Codec SDK headers/libs into CUDA toolkit ($env:CUDA_PATH)..."
+        Copy-Item -Path "$SDK_PATH/Interface/*.h"     -Destination "$env:CUDA_PATH/include/" -Force
+        Copy-Item -Path "$SDK_PATH/Lib/win/x64/*.lib" -Destination "$env:CUDA_PATH/lib/x64/" -Force
       shell: pwsh
 
     - name: Restore build artifacts
