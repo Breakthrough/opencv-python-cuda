@@ -43,8 +43,10 @@ jobs:
         cuda-version: ['12']
         include:
           # CUDA 12: Supports Maxwell (5.0) through Blackwell (10.0)
+          # NOTE: windows-2025 images now ship Visual Studio 2026 (v18) without VS2022,
+          # which CUDA 12.9 nvcc cannot use as host compiler; windows-2022 keeps VS2022 (v143).
           - cuda-version: '12'
-            runs-on: 'windows-2025'
+            runs-on: 'windows-2022'
             cuda-installer: 'cuda_12.9.1_windows_network.exe'
             cuda-path-version: 'v12.9'
             cudnn-archive: 'cudnn-windows-x86_64-9.18.1.3_cuda12-archive.zip'
@@ -57,7 +59,7 @@ jobs:
           # TODO: Re-enable CUDA 13 after updating to OpenCV 4.13+
           # CUDA 13: Supports Turing (7.5) through Blackwell (12.0)
           # - cuda-version: '13'
-          #   runs-on: 'windows-2025'
+          #   runs-on: 'windows-2022'
           #   cuda-installer: 'cuda_13.1.1_windows_network.exe'
           #   cuda-path-version: 'v13.1'
           #   cudnn-archive: 'cudnn-windows-x86_64-9.18.1.3_cuda13-archive.zip'
@@ -227,7 +229,7 @@ jobs:
 
   Test:
     needs: [Build]
-    runs-on: windows-2025
+    runs-on: windows-2022
     defaults:
       run:
         shell: cmd
