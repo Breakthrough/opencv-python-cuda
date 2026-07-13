@@ -1,0 +1,56 @@
+diff --git a/modules/cudev/include/opencv2/cudev/util/vec_traits.hpp b/modules/cudev/include/opencv2/cudev/util/vec_traits.hpp
+index ea0a4dd..8623f43 100644
+--- a/modules/cudev/include/opencv2/cudev/util/vec_traits.hpp
++++ b/modules/cudev/include/opencv2/cudev/util/vec_traits.hpp
+@@ -49,6 +49,15 @@
+ #include "../common.hpp"
+ #include "opencv2/core/cuda/cuda_compat.hpp"
+ 
++// `ulong` is provided by <sys/types.h> on glibc-based platforms, but it is not
++// a builtin and is not defined on Windows, where CUDA only provides the vector
++// types (ulong1..4) and not the scalar. Define it so the MakeVec<ulong> and
++// VecTraits<ulong> specializations below compile there too. unsigned long
++// matches the element type CUDA uses for ulong1..4 on each platform.
++#if defined(_WIN32)
++typedef unsigned long ulong;
++#endif
++
+ namespace cv {
+ 
+     using cv::cuda::device::compat::double4;
+@@ -59,6 +68,17 @@ namespace cv {
+ //! @addtogroup cudev
+ //! @{
+ 
++// CUDA's 64-bit vector types longlong1..4 / ulonglong1..4 are built on
++// long long. On LLP64 platforms (Windows) int64_t/uint64_t are long long
++// based, not long based, so the long/ulong rows below do not cover them and
++// the CUDA build of opencv_core fails with "incomplete type VecTraits<int64_t>"
++// (core dispatches convertTo over CV_64S/CV_64U via int64_t/uint64_t).
++// Instantiate MakeVec/VecTraits for these scalars as well. Targets CUDA 12.x:
++// on CUDA 13+ the 3/4-component variants were renamed to 16-byte aligned
++// *_16a types (see opencv2/core/cuda/cuda_compat.hpp).
++typedef long long longlong;
++typedef unsigned long long ulonglong;
++
+ // MakeVec
+ 
+ template<typename T, int CN> struct MakeVec;
+@@ -78,6 +98,8 @@ CV_CUDEV_MAKE_VEC_INST(float)
+ CV_CUDEV_MAKE_VEC_INST(double)
+ CV_CUDEV_MAKE_VEC_INST(long)
+ CV_CUDEV_MAKE_VEC_INST(ulong)
++CV_CUDEV_MAKE_VEC_INST(longlong)
++CV_CUDEV_MAKE_VEC_INST(ulonglong)
+ 
+ #undef CV_CUDEV_MAKE_VEC_INST
+ 
+@@ -146,6 +168,8 @@ CV_CUDEV_VEC_TRAITS_INST(float)
+ CV_CUDEV_VEC_TRAITS_INST(double)
+ CV_CUDEV_VEC_TRAITS_INST(long)
+ CV_CUDEV_VEC_TRAITS_INST(ulong)
++CV_CUDEV_VEC_TRAITS_INST(longlong)
++CV_CUDEV_VEC_TRAITS_INST(ulonglong)
+ 
+ #undef CV_CUDEV_VEC_TRAITS_INST
+ 

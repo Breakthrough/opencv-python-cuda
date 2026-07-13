@@ -91,17 +91,22 @@ jobs:
         submodules: false
         fetch-depth: 0
     - name: Patch opencv_contrib (pending upstream fixes)
-      # cudev on contrib 5.x uses `ulong`, which glibc defines but MSVC does not, so
-      # the CUDA build of opencv_core fails on Windows with "identifier 'ulong' is
-      # undefined" (opencv/opencv#29265). Apply the pending upstream fix
-      # opencv/opencv_contrib#4144; drop this step (and patches/) once it merges and
-      # the submodule pin advances past it. setup.py's own `submodule update --init`
-      # later is a no-op because the pin is already checked out, so the patch
-      # survives into the build.
+      # contrib 5.x cudev does not compile with CUDA on Windows (opencv/opencv#29265):
+      # 1. vec_traits.hpp uses `ulong`, which glibc defines but MSVC does not
+      #    ("identifier 'ulong' is undefined") -- fix pending as opencv_contrib#4144.
+      # 2. There are no VecTraits/MakeVec instantiations for long long, but on LLP64
+      #    (Windows) int64_t/uint64_t ARE long long, and OpenCV 5 core dispatches
+      #    GpuMat::convertTo over the new CV_64S/CV_64U depths via int64_t/uint64_t
+      #    ("incomplete type VecTraits<int64_t>"). Linux only works because int64_t
+      #    is plain long there. Not yet fixed upstream.
+      # Both are in patches/opencv_contrib-cudev-win64-types.patch; drop this step
+      # once upstream fixes land and the submodule pin advances past them.
+      # setup.py's own `submodule update --init` later is a no-op because the pin is
+      # already checked out, so the patch survives into the build.
       shell: bash
       run: |
         git submodule update --init --recursive opencv_contrib
-        git -C opencv_contrib apply ../patches/opencv_contrib-4144-cudev-ulong-win32.patch
+        git -C opencv_contrib apply ../patches/opencv_contrib-cudev-win64-types.patch
         git -C opencv_contrib diff --stat
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
