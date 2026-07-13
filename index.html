@@ -3,60 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>opencv-python-cuda | Download</title>
+    <title>opencv-python-cuda | CUDA-enabled OpenCV for Python</title>
+    <meta name="description" content="Pre-built OpenCV wheels for Python with NVIDIA CUDA support. No CUDA Toolkit or cuDNN installation required.">
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header>
+    <header class="hero">
         <div class="container">
             <h1>opencv-python-cuda</h1>
-            <p>Standalone NVIDIA® CUDA™ enabled OpenCV packages for Python.</p>
+            <p class="tagline">
+                Pre-built OpenCV wheels for Python with NVIDIA&reg; CUDA&trade; support -
+                no CUDA Toolkit or cuDNN installation required.
+            </p>
+            <div class="chips">
+                <span class="chip">Windows x64</span>
+                <span class="chip">CUDA 12.x</span>
+                <span class="chip">Maxwell (GTX 900) or newer</span>
+            </div>
         </div>
     </header>
 
     <main>
         <div class="container">
-            <section class="download-section">
-                <h2>Download</h2>
-                <p class="version">Latest Release: 4.12.0-dev2</p>
-                <div class="platform-selection">
-                    <div class="platform">
-                        <h3>Windows</h3>
-                        <a href="https://github.com/Breakthrough/opencv-python-cuda/releases/tag/4.12.0-dev2" class="download-button">x86_64</a>
-                    </div>
+            <section class="card get-started">
+                <h2>Get started</h2>
+                <!-- Release version: update the link below when publishing a new release. -->
+                <div class="download-row">
+                    <a href="https://github.com/Breakthrough/opencv-python-cuda/releases/tag/4.13.0-dev1" class="download-button">Download 4.13.0-dev1</a>
+                    <a href="https://github.com/Breakthrough/opencv-python-cuda/releases" class="all-releases">all releases &rarr;</a>
                 </div>
-                <div class="eula">
-                    <p>By downloading and using the software, you agree to fully comply with the terms and conditions of the <a href="https://docs.nvidia.com/cuda/eula/index.html" target="_blank">CUDA EULA</a>.</p>
-                </div>
-            </section>
-
-            <section class="about-section">
-                <h2>About opencv-python-cuda</h2>
-                <p>
-                    This project provides pre-built NVIDIA® CUDA™ enabled OpenCV packages for Python that come with all batteries included.
-                    It is a fork of the official <a href="https://github.com/opencv/opencv-python">opencv-python</a> project.
-                    Currently, packages are only produced for Windows x64, and devices must be Maxwell class (GeForce 900 series) or newer.
-                </p>
-                <p>
-                    The wheel is fully standalone &mdash; no CUDA Toolkit, cuDNN, or any other NVIDIA software needs to be installed on your system.
-                    All required runtime libraries are bundled directly in the package. Just install the <code>.whl</code> file and you're ready to go.
-                </p>
-                <p>
-                    Once installed via <code>pip</code> (or another Python package manager like <code>uv</code>), the following should just work:
-                </p>
-                <pre><code>import cv2
+                <ol class="steps">
+                    <li>Download the <code>.whl</code> file for your platform from the release above.</li>
+                    <li>
+                        Install it with <code>pip</code> (or another package manager like <code>uv</code>):
+                        <pre><code>pip install opencv_python_cuda-*-win_amd64.whl</code></pre>
+                    </li>
+                    <li>
+                        Verify that CUDA is working:
+                        <pre><code>import cv2
 print(cv2.cuda.getCudaEnabledDeviceCount())</code></pre>
+                    </li>
+                </ol>
+                <p class="eula">
+                    By downloading and using the software, you agree to fully comply with the terms and
+                    conditions of the <a href="https://docs.nvidia.com/cuda/eula/index.html" target="_blank">CUDA EULA</a>.
+                </p>
             </section>
 
-            <section class="about-section">
+            <section class="content-section">
+                <h2>About</h2>
+                <p>
+                    <strong>opencv-python-cuda</strong> is a fork of the official
+                    <a href="https://github.com/opencv/opencv-python">opencv-python</a> project that ships
+                    CUDA-enabled OpenCV builds with all batteries included: every required runtime library is
+                    bundled directly in the wheel, including hardware video decoding and encoding (NVDEC/NVENC).
+                </p>
+                <p>
+                    The only system requirement is an up-to-date NVIDIA driver - the wheel links directly
+                    against driver components, so a working driver must be installed for <code>import cv2</code>
+                    to succeed.
+                </p>
+            </section>
+
+            <section class="content-section">
                 <h2>Documentation</h2>
-                <ul class="doc-links">
-                    <li><a href="cuda-compatibility.html">CUDA Compatibility Reference</a> &mdash; GPU architectures, compute capabilities, and CUDA toolkit support</li>
-                    <li><a href="workflow.html">Workflow Guide</a> &mdash; Repository setup, triggering builds, and wheel size strategy</li>
-                </ul>
+                <div class="doc-cards">
+                    <a class="doc-card" href="cuda-compatibility.html">
+                        <h3>CUDA Compatibility Reference</h3>
+                        <p>GPU architectures, compute capabilities, and CUDA toolkit support.</p>
+                    </a>
+                    <a class="doc-card" href="workflow.html">
+                        <h3>Workflow Guide</h3>
+                        <p>Repository setup, triggering builds, and wheel size strategy.</p>
+                    </a>
+                </div>
             </section>
         </div>
     </main>
