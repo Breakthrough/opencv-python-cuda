@@ -94,14 +94,13 @@ def main():
         "cv2": ["*%s" % sysconfig.get_config_vars().get("SO"), "version.py"]
         + (["*.dll"] if os.name == "nt" else [])
         + ["LICENSE.txt", "LICENSE-3RD-PARTY.txt"],
-        "cv2.data": ["*.xml"],
     }
 
     # Files from CMake output to copy to package.
     # Path regexes with forward slashes relative to CMake install dir.
     rearrange_cmake_output_data = {
         "cv2": (
-            [r"bin/opencv_videoio_ffmpeg\d{4}%s\.dll" % ("_64" if is64 else "")]
+            [r"bin/opencv_videoio_ffmpeg\d{3}%s\.dll" % ("_64" if is64 else "")]
             if os.name == "nt"
             else []
         )
@@ -127,12 +126,6 @@ def main():
         +
         [ r"python/cv2/py.typed" ] if sys.version_info >= (3, 6) else []
         ,
-        "cv2.data": [  # OPENCV_OTHER_INSTALL_PATH
-            ("etc" if os.name == "nt" else "share/opencv4") + r"/haarcascades/.*\.xml"
-        ],
-        "cv2.gapi": [
-            "python/cv2" + r"/gapi/.*\.py"
-        ],
         "cv2.mat_wrapper": [
             "python/cv2" + r"/mat_wrapper/.*\.py"
         ],
@@ -151,8 +144,11 @@ def main():
     # Raw paths relative to sourcetree root.
     files_outside_package_dir = {"cv2": ["LICENSE.txt", "LICENSE-3RD-PARTY.txt","*.dll"]}
 
+    # HACK: Disabled generic assembler for now.
+    # Windows 2025 CI environment does not provide suitable assembler or build is broken in OpenCV MLAS.
     ci_cmake_generator = (
-        ["-G", "Visual Studio 17 2022", "-T", "v143"]
+        ["-G", "Visual Studio 17 2022", "-T", "v143",
+         "-DCMAKE_ASM_COMPILER="]
         if os.name == "nt"
         else ["-G", "Unix Makefiles"]
     )

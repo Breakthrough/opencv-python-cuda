@@ -56,7 +56,7 @@ jobs:
             cuda-arch-bin: '5.0;5.2;6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0;10.0'
             cuda-arch-ptx: '10.0'
             cache-key: 'nvidia-deps-cuda-12.9.1-cudnn-9.18.1.3'
-          # TODO: Re-enable CUDA 13 after updating to OpenCV 4.13+
+          # TODO: CUDA 13 still blocked: 13.x rearranged the Windows DLL layout (affects bundling); 13.2 needs a 4.14-era contrib fix
           # CUDA 13: Supports Turing (7.5) through Blackwell (12.0)
           # - cuda-version: '13'
           #   runs-on: 'windows-2022'
@@ -206,7 +206,7 @@ jobs:
         python --version
         python -m pip install --upgrade pip
         python -m pip install --upgrade setuptools
-        python -m pip install cmake==3.24.2
+        python -m pip install cmake==4.3.2
         python -m pip install toml && python -c "import toml; c = toml.load('pyproject.toml'); print('\n'.join(c['build-system']['requires']))" >> requirements.txt | python -m pip install -r requirements.txt
         $CI_BUILD = 1
         if (Test-Path _skbuild) {
@@ -238,7 +238,7 @@ jobs:
       matrix:
         python-version: ['3.12']
         platform: [x64]
-        cuda-version: ['12']  # TODO: Re-enable '13' after updating to OpenCV 4.13+
+        cuda-version: ['12']  # TODO: CUDA 13 still blocked: 13.x rearranged the Windows DLL layout (affects bundling); 13.2 needs a 4.14-era contrib fix
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       OPENCV_TEST_DATA_PATH: ${{ github.workspace }}\opencv_extra\testdata
