@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workflow Guide | opencv-python-cuda</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <header>
@@ -106,10 +103,10 @@ git pull --rebase upstream 4.x</code></pre>
             <section class="content-section">
                 <h2>Wheel Size &amp; Format</h2>
                 <p>
-                    The wheel ships as a standard ZIP using the default DEFLATE compression &mdash; no special repacking. GitHub limits each release asset to <strong>2 GiB</strong>, and the wheel must fit under that limit.
+                    The wheel ships as a standard ZIP using the default DEFLATE compression - no special repacking. GitHub limits each release asset to <strong>2 GiB</strong>, and the wheel must fit under that limit.
                 </p>
                 <p>
-                    The size strategy is <strong>DLL trimming</strong>, not compression. The "Remove unused CUDA DLLs" build step keeps only the CUDA libraries that <code>cv2.pyd</code> actually links against (determined via PE import analysis) and discards the rest &mdash; roughly 1.3 GB of unused libraries such as cuSPARSE, cuSOLVER, cuRAND, and nvRTC. This is what keeps the DEFLATE wheel under 2 GiB.
+                    The size strategy is <strong>DLL trimming</strong>, not compression. The "Remove unused CUDA DLLs" build step keeps only the CUDA libraries that <code>cv2.pyd</code> actually links against (determined via PE import analysis) and discards the rest - roughly 1.3 GB of unused libraries such as cuSPARSE, cuSOLVER, cuRAND, and nvRTC. This is what keeps the DEFLATE wheel under 2 GiB.
                 </p>
                 <p>
                     An earlier revision repacked the wheel with LZMA (<code>ZIP_LZMA</code>) to shrink it further, but this was <strong>abandoned</strong>: <a href="https://github.com/astral-sh/uv" target="_blank">uv</a> cannot install LZMA-compressed wheels (it errors with <code>compression not supported: 14</code>, see <a href="https://github.com/astral-sh/uv/issues/13192" target="_blank">astral-sh/uv#13192</a>). Plain DEFLATE installs correctly under both pip and uv.
