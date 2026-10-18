@@ -90,23 +90,31 @@ jobs:
       with:
         submodules: false
         fetch-depth: 0
-    - name: Patch opencv_contrib (backport upstream PR #4144 for 5.0.0)
-      # OpenCV 5.0.0 tag in opencv_contrib (755e506) predates upstream PR #4144 (eca97a4),
-      # which fixed opencv/opencv#29265 (Windows LLP64 CUDA compilation in cudev's
-      # vec_traits.hpp for 64-bit integer MakeVec/VecTraits rows).
-      # Apply the backported patch when building the 5.0.0 tag; skip if already present.
+    - name: Patch submodules (backport upstream PR #29343 and PR #4144 for 5.0.0)
+      # OpenCV 5.0.0 tags predate two upstream Windows fixes merged shortly after release:
+      # 1. opencv PR #29343 (bc11496dcb): disable MLAS .S assembly on Windows (fixes LNK1181
+      #    missing SgemmKernelSse2.obj when MinGW cc.exe is detected by check_language(ASM)).
+      # 2. opencv_contrib PR #4144 (eca97a4): fix Windows LLP64 CUDA compilation in cudev's
+      #    vec_traits.hpp for 64-bit integer MakeVec/VecTraits rows (opencv/opencv#29265).
+      # Apply both backported patches when building the 5.0.0 tags; skip if already present.
       shell: bash
       run: |
         if [ "${ENABLE_ROLLING}" = "1" ]; then
-          git submodule update --init --recursive --remote opencv_contrib
+          git submodule update --init --recursive --remote opencv opencv_contrib
         else
-          git submodule update --init --recursive opencv_contrib
+          git submodule update --init --recursive opencv opencv_contrib
+        fi
+        if git -C opencv apply --check ../patches/opencv-mlas-disable-win32.patch 2>/dev/null; then
+          git -C opencv apply ../patches/opencv-mlas-disable-win32.patch
+          git -C opencv diff --stat
+        else
+          echo "opencv patch already applied upstream; skipping."
         fi
         if git -C opencv_contrib apply --check ../patches/opencv_contrib-cudev-win64-types.patch 2>/dev/null; then
           git -C opencv_contrib apply ../patches/opencv_contrib-cudev-win64-types.patch
           git -C opencv_contrib diff --stat
         else
-          echo "Patch already applied upstream; skipping."
+          echo "opencv_contrib patch already applied upstream; skipping."
         fi
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4

@@ -1,0 +1,16 @@
+# Backport of upstream opencv/opencv PR #29343 (commit bc11496dcbb5ac7de2aef63611e8cfeeea0a0111).
+# OpenCV 5.0.0 tag (40738fb) predates PR #29343 by 2 days. On Windows runners where
+# MinGW's cc.exe is on PATH, check_language(ASM) succeeds and adds GAS .S assembly
+# files to opencv_dnn_mlas under Visual Studio MSBuild, which ignores .S sources and
+# fails linking opencv_dnn with LNK1181: cannot open input file 'SgemmKernelSse2.obj'.
+diff --git a/3rdparty/mlas/CMakeLists.txt b/3rdparty/mlas/CMakeLists.txt
+index c773ec0004..368b168f38 100644
+--- a/3rdparty/mlas/CMakeLists.txt
++++ b/3rdparty/mlas/CMakeLists.txt
+@@ -73,2 +73,6 @@ set(OPENCV_DNN_MLAS_SKIP_REASON "" CACHE INTERNAL "" FORCE)
+ 
++if(WIN32)
++  return()
++endif()
++
+ # Probe ASM language once. check_language(ASM) is a no-op when
