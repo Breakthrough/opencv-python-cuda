@@ -94,6 +94,7 @@ def main():
         "cv2": ["*%s" % sysconfig.get_config_vars().get("SO"), "version.py"]
         + (["*.dll"] if os.name == "nt" else [])
         + ["LICENSE.txt", "LICENSE-3RD-PARTY.txt"],
+        "cv2.data": ["*.xml"],
     }
 
     # Files from CMake output to copy to package.
@@ -136,6 +137,14 @@ def main():
             "python/cv2" + r"/utils/.*\.py"
         ],
     }
+
+    if build_contrib:
+        rearrange_cmake_output_data["cv2.data"] = [  # OPENCV_OTHER_INSTALL_PATH
+            ("etc" if os.name == "nt" else "share/opencv5") + r"/haarcascades/.*\.xml"
+        ]
+        rearrange_cmake_output_data["cv2.gapi"] = [
+            "python/cv2" + r"/gapi/.*\.py"
+        ]
 
     if sys.version_info >= (3, 6):
         rearrange_cmake_output_data["cv2.typing"] = ["python/cv2" + r"/typing/.*\.py"]

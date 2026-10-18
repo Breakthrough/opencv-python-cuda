@@ -90,24 +90,24 @@ jobs:
       with:
         submodules: false
         fetch-depth: 0
-    - name: Patch opencv_contrib (pending upstream fixes)
-      # contrib 5.x cudev does not compile with CUDA on Windows (opencv/opencv#29265):
-      # 1. vec_traits.hpp uses `ulong`, which glibc defines but MSVC does not
-      #    ("identifier 'ulong' is undefined") -- fix pending as opencv_contrib#4144.
-      # 2. There are no VecTraits/MakeVec instantiations for long long, but on LLP64
-      #    (Windows) int64_t/uint64_t ARE long long, and OpenCV 5 core dispatches
-      #    GpuMat::convertTo over the new CV_64S/CV_64U depths via int64_t/uint64_t
-      #    ("incomplete type VecTraits<int64_t>"). Linux only works because int64_t
-      #    is plain long there. Not yet fixed upstream.
-      # Both are in patches/opencv_contrib-cudev-win64-types.patch; drop this step
-      # once upstream fixes land and the submodule pin advances past them.
-      # setup.py's own `submodule update --init` later is a no-op because the pin is
-      # already checked out, so the patch survives into the build.
+    - name: Patch opencv_contrib (backport upstream PR #4144 for 5.0.0)
+      # OpenCV 5.0.0 tag in opencv_contrib (755e506) predates upstream PR #4144 (eca97a4),
+      # which fixed opencv/opencv#29265 (Windows LLP64 CUDA compilation in cudev's
+      # vec_traits.hpp for 64-bit integer MakeVec/VecTraits rows).
+      # Apply the backported patch when building the 5.0.0 tag; skip if already present.
       shell: bash
       run: |
-        git submodule update --init --recursive opencv_contrib
-        git -C opencv_contrib apply ../patches/opencv_contrib-cudev-win64-types.patch
-        git -C opencv_contrib diff --stat
+        if [ "${ENABLE_ROLLING}" = "1" ]; then
+          git submodule update --init --recursive --remote opencv_contrib
+        else
+          git submodule update --init --recursive opencv_contrib
+        fi
+        if git -C opencv_contrib apply --check ../patches/opencv_contrib-cudev-win64-types.patch 2>/dev/null; then
+          git -C opencv_contrib apply ../patches/opencv_contrib-cudev-win64-types.patch
+          git -C opencv_contrib diff --stat
+        else
+          echo "Patch already applied upstream; skipping."
+        fi
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -185,9 +185,9 @@ jobs:
       if: ${{ inputs.restore_build_cache && !inputs.rolling_build }}
       with:
         path: _skbuild
-        key: ${{ runner.os }}-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ hashFiles('**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-opencv5-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ hashFiles('**/CMakeLists.txt') }}
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-
+          ${{ runner.os }}-opencv5-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-
 
     - name: Remove unused CUDA DLLs
       # Only bundle CUDA DLLs that cv2.pyd actually needs (determined via PE import analysis).
@@ -238,7 +238,7 @@ jobs:
       if: ${{ inputs.save_build_cache && !inputs.rolling_build }}
       with:
         path: _skbuild
-        key: ${{ runner.os }}-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ hashFiles('**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-opencv5-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ hashFiles('**/CMakeLists.txt') }}
     - name: Saving all wheels
       uses: actions/upload-artifact@v7
       with:
