@@ -1,8 +1,35 @@
-# Backport of upstream opencv/opencv PR #29343 (commit bc11496dcbb5ac7de2aef63611e8cfeeea0a0111).
+# Backport of upstream opencv/opencv PR #29343 (commit bc11496dcbb5ac7de2aef63611e8cfeeea0a0111)
+# plus guarding the top-level ASM language probe added for MLAS in CMakeLists.txt (commit 46e8224cf0).
 # OpenCV 5.0.0 tag (40738fb) predates PR #29343 by 2 days. On Windows runners where
-# MinGW's cc.exe is on PATH, check_language(ASM) succeeds and adds GAS .S assembly
-# files to opencv_dnn_mlas under Visual Studio MSBuild, which ignores .S sources and
-# fails linking opencv_dnn with LNK1181: cannot open input file 'SgemmKernelSse2.obj'.
+# MinGW's cc.exe is on PATH:
+# 1. Top-level check_language(ASM) / enable_language(ASM) detects C:/mingw64/bin/cc.exe (GNU)
+#    and loads CMake's Platform/Windows-GNU-ASM.cmake -> Platform/Windows-GNU.cmake, which
+#    overwrites global CMAKE_STATIC_LIBRARY_PREFIX/SUFFIX ("lib"/".a") and
+#    CMAKE_LINK_LIBRARY_FLAG/CMAKE_LIBRARY_PATH_FLAG ("-l"/"-L"), causing MSVC link.exe
+#    to ignore all CUDA/system libraries with LNK4044 ('/lcudart_static', '/lws2_32', etc.)
+#    and fail linking cv2.pyd with LNK2001/LNK2019 unresolved externals.
+# 2. 3rdparty/mlas/CMakeLists.txt adds GAS .S assembly files to opencv_dnn_mlas under
+#    Visual Studio MSBuild, which ignores .S sources and fails linking opencv_dnn with
+#    LNK1181: cannot open input file 'SgemmKernelSse2.obj'.
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d6812aa76e..8c59337714 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -79,7 +79,9 @@ if(OPENCV_WORKAROUND_CMAKE_20989)
+ endif()
+ 
+-include(CheckLanguage)
+-check_language(ASM)
+-if(CMAKE_ASM_COMPILER)
+-  enable_language(ASM)
++if(NOT WIN32)
++  include(CheckLanguage)
++  check_language(ASM)
++  if(CMAKE_ASM_COMPILER)
++    enable_language(ASM)
++  endif()
+ endif()
+ 
 diff --git a/3rdparty/mlas/CMakeLists.txt b/3rdparty/mlas/CMakeLists.txt
 index c773ec0004..368b168f38 100644
 --- a/3rdparty/mlas/CMakeLists.txt
@@ -14,3 +41,4 @@ index c773ec0004..368b168f38 100644
 +endif()
 +
  # Probe ASM language once. check_language(ASM) is a no-op when
+

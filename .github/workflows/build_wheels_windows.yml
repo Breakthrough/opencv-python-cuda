@@ -92,8 +92,10 @@ jobs:
         fetch-depth: 0
     - name: Patch submodules (backport upstream PR #29343 and PR #4144 for 5.0.0)
       # OpenCV 5.0.0 tags predate two upstream Windows fixes merged shortly after release:
-      # 1. opencv PR #29343 (bc11496dcb): disable MLAS .S assembly on Windows (fixes LNK1181
-      #    missing SgemmKernelSse2.obj when MinGW cc.exe is detected by check_language(ASM)).
+      # 1. opencv PR #29343 (bc11496dcb) + top-level CMakeLists.txt ASM guard: disable generic
+      #    ASM language probe and MLAS .S assembly on Windows (fixes MinGW cc.exe detection
+      #    loading Windows-GNU.cmake which clobbers MSVC link flags with -l/-L LNK4044, and
+      #    fixes LNK1181 missing SgemmKernelSse2.obj in opencv_dnn).
       # 2. opencv_contrib PR #4144 (eca97a4): fix Windows LLP64 CUDA compilation in cudev's
       #    vec_traits.hpp for 64-bit integer MakeVec/VecTraits rows (opencv/opencv#29265).
       # Apply both backported patches when building the 5.0.0 tags; skip if already present.
