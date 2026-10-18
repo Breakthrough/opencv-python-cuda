@@ -1,5 +1,8 @@
 name: Publish Docs
 
+# Deploys docs/ plus a generated PEP 503 package index (packages/) to the
+# gh-pages branch. The index lists wheel assets from GitHub Releases so users
+# can `pip install opencv-python-cuda --extra-index-url <site>/packages/`.
 on:
   push:
     branches:
@@ -8,7 +11,15 @@ on:
       - 'docs/**.html'
       - 'docs/**.css'
       - 'docs/**.js'
+      - 'tools/gen_simple_index.py'
+      - '.github/workflows/publish-docs.yml'
+  release:
+    # Regenerate the package index whenever a release is created, moved, or removed.
+    types: [published, edited, deleted, unpublished, released, prereleased]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   deploy:
@@ -16,6 +27,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Release events check out the tagged commit; always deploy from 4.x-cuda.
+          ref: 4.x-cuda
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Generate package index
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python tools/gen_simple_index.py --out index-out
 
       - name: Update gh-pages Branch
         shell: bash
@@ -24,10 +48,13 @@ jobs:
           git config --global user.email github-actions@github.com
 
           cp -r docs docs-tmp
+          cp -r index-out/packages docs-tmp/packages
           git fetch origin gh-pages
           git checkout gh-pages
+          # Replace the generated index wholesale so removed releases disappear.
+          rm -rf packages
           mv -f docs-tmp/* .
-          git add *
+          git add -A -- . ':!docs-tmp' ':!index-out'
           if git diff --cached --quiet; then
             echo "No changes to deploy."
           else

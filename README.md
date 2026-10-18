@@ -24,14 +24,28 @@ See the [project homepage](https://breakthrough.github.io/opencv-python-cuda/) f
 
 ## Installation
 
+The wheels are too large for PyPI, so they are served from a package index hosted alongside this documentation. Install by name with `pip`:
+
+```
+pip install opencv-python-cuda --extra-index-url https://breakthrough.github.io/opencv-python-cuda/packages/
+```
+
+or with `uv`:
+
+```
+uv pip install opencv-python-cuda --extra-index-url https://breakthrough.github.io/opencv-python-cuda/packages/
+```
+
+The wheel itself downloads from the [Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases) and its SHA-256 hash is verified during installation. `numpy` and other dependencies still come from PyPI. Then import the `cv2` package as usual.
+
+### Manual installation
+
 1. Download the latest `opencv_python_cuda-*-win_amd64.whl` from the [Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases).
 2. Install it with `pip` (or another package manager like `uv`):
 
    ```
    pip install opencv_python_cuda-<version>-win_amd64.whl
    ```
-
-3. Import the `cv2` package as usual.
 
 > [!NOTE]
 > If you have a previous manually-installed (not via `pip`) version of OpenCV (e.g. a `cv2` module in the root of Python's site-packages), remove it before installing to avoid conflicts. Also make sure your `pip` is up to date (19.3 is the minimum supported version): `pip install --upgrade pip`.
@@ -57,7 +71,11 @@ For general OpenCV questions, refer to [the FAQ in the upstream project](https:/
 
 **Q: Why can't I `pip install opencv-python-cuda` from PyPI?**
 
-A: The package is far too large for PyPI and exceeds its [project size limits](https://docs.pypi.org/project-management/storage-limits/). Download wheels from the [Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases) instead.
+A: The package is far too large for PyPI and exceeds its [project size limits](https://docs.pypi.org/project-management/storage-limits/). Instead, a [PEP 503](https://peps.python.org/pep-0503/) package index is published at `https://breakthrough.github.io/opencv-python-cuda/packages/`, which points at the wheels on the [Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases). Pass it with `--extra-index-url` as shown in [Installation](#installation), or download the wheel manually.
+
+**Q: Is `--extra-index-url` safe to use?**
+
+A: With `--extra-index-url`, `pip` also consults PyPI for the same package name and picks whichever index offers the highest version. `opencv-python-cuda` is not published on PyPI, so this is a theoretical concern only, but if you want to rule it out entirely, download the wheel from the Releases page and install it by file path instead.
 
 **Q: Why does `import cv2` fail with "DLL load failed"?**
 
