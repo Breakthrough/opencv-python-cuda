@@ -47,28 +47,28 @@ jobs:
           # which CUDA 12.9 nvcc cannot use as host compiler; windows-2022 keeps VS2022 (v143).
           - cuda-version: '12'
             runs-on: 'windows-2022'
-            cuda-installer: 'cuda_12.9.1_windows_network.exe'
+            cuda-installer: 'cuda_12.9.2_windows_x86_64_network.exe'
             cuda-path-version: 'v12.9'
-            cudnn-archive: 'cudnn-windows-x86_64-9.18.1.3_cuda12-archive.zip'
-            cudnn-folder: 'cudnn-windows-x86_64-9.18.1.3_cuda12-archive'
+            cudnn-archive: 'cudnn-windows-x86_64-9.28.0.42_cuda12-archive.zip'
+            cudnn-folder: 'cudnn-windows-x86_64-9.28.0.42_cuda12-archive'
             video-codec-sdk-archive: 'Video_Codec_SDK_13.0.37.zip'
             video-codec-sdk-folder: 'Video_Codec_SDK_13.0.37'
             cuda-arch-bin: '5.0;5.2;6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0;10.0'
             cuda-arch-ptx: '10.0'
-            cache-key: 'nvidia-deps-cuda-12.9.1-cudnn-9.18.1.3'
+            cache-key: 'nvidia-deps-cuda-12.9.2-cudnn-9.28.0.42-vcsdk-13.0.37'
           # TODO: Re-enable CUDA 13 after updating to OpenCV 4.13+
           # CUDA 13: Supports Turing (7.5) through Blackwell (12.0)
           # - cuda-version: '13'
           #   runs-on: 'windows-2022'
-          #   cuda-installer: 'cuda_13.1.1_windows_network.exe'
-          #   cuda-path-version: 'v13.1'
-          #   cudnn-archive: 'cudnn-windows-x86_64-9.18.1.3_cuda13-archive.zip'
-          #   cudnn-folder: 'cudnn-windows-x86_64-9.18.1.3_cuda13-archive'
+          #   cuda-installer: 'cuda_13.5.0_windows_x86_64_network.exe'
+          #   cuda-path-version: 'v13.5'
+          #   cudnn-archive: 'cudnn-windows-x86_64-9.28.0.42_cuda13-archive.zip'
+          #   cudnn-folder: 'cudnn-windows-x86_64-9.28.0.42_cuda13-archive'
           #   video-codec-sdk-archive: 'Video_Codec_SDK_13.0.37.zip'
           #   video-codec-sdk-folder: 'Video_Codec_SDK_13.0.37'
           #   cuda-arch-bin: '7.5;8.0;8.6;8.9;9.0;10.0;12.0'
           #   cuda-arch-ptx: '12.0'
-          #   cache-key: 'nvidia-deps-cuda-13.1.1-cudnn-9.18.1.3'
+          #   cache-key: 'nvidia-deps-cuda-13.5.0-cudnn-9.28.0.42-vcsdk-13.0.37'
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       SDIST: 0
@@ -106,6 +106,8 @@ jobs:
         path: .deps/Nvidia
         key: ${{ matrix.cache-key }}
     - name: Clone NVIDIA dependencies
+      # Only download the LFS objects this matrix entry uses. A plain clone pulls every
+      # archive in the deps repo (several GB) and counts against the LFS bandwidth quota.
       if: steps.cache-nvidia-deps.outputs.cache-hit != 'true'
       env:
         SSH_PRIVATE_KEY: ${{ secrets.DEPS_REPO_SSH_KEY }}
@@ -113,7 +115,18 @@ jobs:
         eval "$(ssh-agent -s)"
         ssh-add - <<< "${SSH_PRIVATE_KEY}"
         ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
-        git clone git@github.com:Breakthrough/opencv-python-cuda-deps.git .deps
+        GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 git@github.com:Breakthrough/opencv-python-cuda-deps.git .deps
+        files="Nvidia/${{ matrix.cuda-installer }},Nvidia/${{ matrix.cudnn-archive }},Nvidia/${{ matrix.video-codec-sdk-archive }}"
+        git -C .deps lfs pull --include="$files"
+        # Fail fast if a file is still an LFS pointer (~130 bytes) rather than real content.
+        for f in ${files//,/ }; do
+          size=$(stat -c %s ".deps/$f")
+          echo "$f: $size bytes"
+          if [ "$size" -lt 1000000 ]; then
+            echo "::error::$f was not downloaded from LFS"
+            exit 1
+          fi
+        done
       shell: bash
     - name: Install NVIDIA CUDA Toolkit
       run: |
@@ -167,9 +180,9 @@ jobs:
       if: ${{ inputs.restore_build_cache && !inputs.rolling_build }}
       with:
         path: _skbuild
-        key: ${{ runner.os }}-opencv414-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ hashFiles('**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-opencv414-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ matrix.cache-key }}-${{ hashFiles('**/CMakeLists.txt') }}
         restore-keys: |
-          ${{ runner.os }}-opencv414-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-
+          ${{ runner.os }}-opencv414-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ matrix.cache-key }}-
 
     - name: Remove unused CUDA DLLs
       # Only bundle CUDA DLLs that cv2.pyd actually needs (determined via PE import analysis).
@@ -220,7 +233,7 @@ jobs:
       if: ${{ inputs.save_build_cache && !inputs.rolling_build }}
       with:
         path: _skbuild
-        key: ${{ runner.os }}-opencv414-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ hashFiles('**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-opencv414-${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}-${{ matrix.cache-key }}-${{ hashFiles('**/CMakeLists.txt') }}
     - name: Saving all wheels
       uses: actions/upload-artifact@v7
       with:
