@@ -1,54 +1,106 @@
-## `opencv-python-cuda`
+# opencv-python-cuda
 
-Download: [Latest Release (4.12.0-dev1)](https://github.com/Breakthrough/opencv-python-cuda/releases/tag/4.12.0-dev1)
+**Pre-built NVIDIA&reg; CUDA&trade; enabled OpenCV wheels for Python - batteries included.**
 
-## What is `opencv-python-cuda`?
+[![Latest release](https://img.shields.io/github/v/release/Breakthrough/opencv-python-cuda?include_prereleases&label=release)](https://github.com/Breakthrough/opencv-python-cuda/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue)](https://github.com/Breakthrough/opencv-python-cuda/releases)
+[![License](https://img.shields.io/badge/license-MIT-green)](#licensing)
 
-Pre-built NVIDIA® CUDA™ enabled OpenCV packages for Python that come with all batteries included. This is a fork of [the official opencv-python project](https://github.com/opencv/opencv-python). Right now packages are only produced for Windows x64, and devices must be Maxwell class (GeForce 900 series) or newer.  Once installed via `pip` (or another Python package manager like `uv`), the following should *just work*:
+This is a fork of the official [opencv-python](https://github.com/opencv/opencv-python) project that ships fully standalone CUDA-enabled OpenCV builds. No CUDA Toolkit, cuDNN, or other NVIDIA SDK needs to be installed - every required runtime library is bundled in the wheel, including hardware video decoding and encoding (NVDEC/NVENC). Once installed, the following should *just work*:
 
-```
+```python
 import cv2
 print(cv2.cuda.getCudaEnabledDeviceCount())
 ```
 
-### Installation and Usage
+See the [project homepage](https://breakthrough.github.io/opencv-python-cuda/) for more documentation.
 
-1. If you have previous/other manually installed (= not installed via ``pip``) version of OpenCV installed (e.g. cv2 module in the root of Python's site-packages), remove it before installation to avoid conflicts.
-2. Make sure that your `pip` version is up-to-date (19.3 is the minimum supported version): `pip install --upgrade pip`. Check version with `pip -V`. For example Linux distributions ship usually with very old `pip` versions which cause a lot of unexpected problems especially with the `manylinux` format.
-3. Download the latest build `opencv_python_cuda-*-win_amd64.whl` file and install it.
-4. Import the `cv2` package as usual.
+## Requirements
 
-Frequently Asked Questions
---------------------------
+- **Windows x64** (the only platform packages are currently produced for)
+- **NVIDIA GPU** - Maxwell class (GeForce GTX 900 series) or newer
+- **NVIDIA driver** - the wheel links directly against driver libraries, so an up-to-date driver must be installed for `import cv2` to succeed
+- **Python 3.7 or newer** - a single abi3 wheel covers all supported Python versions
 
-Please refer to [the FAQ in the upstream project](https://github.com/opencv/opencv-python/?tab=readme-ov-file#frequently-asked-questions) for the most common questions.
+## Installation
 
-**Q: How do I install `opencv-python-cuda`?**
+The wheels are too large for PyPI, so they are served from a package index hosted alongside this documentation. Install by name with `pip`:
 
-A: Releases can be downloaded from [the Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases). You can download and install the pre-built Python .whl file with `pip install`.
+```
+pip install opencv-python-cuda --extra-index-url https://breakthrough.github.io/opencv-python-cuda/packages/
+```
 
-**Q: Can you upload `opencv-python-cuda` to PyPI?**
+or with `uv`:
 
-A: No, the package is far too large and exceeds [project size limits](https://docs.pypi.org/project-management/storage-limits/).
+```
+uv pip install opencv-python-cuda --extra-index-url https://breakthrough.github.io/opencv-python-cuda/packages/
+```
 
-**Q: What do the wheels include?**
+This installs the newest release, which is **OpenCV 5**. OpenCV 5 has breaking API changes (see the [upstream change logs](https://github.com/opencv/opencv/wiki/OpenCV-Change-Logs)). To stay on OpenCV 4.x, ask for a version below 5:
 
-All OpenCV modules that can be enabled with CUDA. All required runtime files are included in the wheels. Non-free algorithms are excluded as per the following question.
+```
+pip install "opencv-python-cuda<5" --extra-index-url https://breakthrough.github.io/opencv-python-cuda/packages/
+```
+
+The wheel itself downloads from the [Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases) and its SHA-256 hash is verified during installation. `numpy` and other dependencies still come from PyPI. Then import the `cv2` package as usual.
+
+### Manual installation
+
+1. Download the latest `opencv_python_cuda-*-win_amd64.whl` from the [Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases).
+2. Install it with `pip` (or another package manager like `uv`):
+
+   ```
+   pip install opencv_python_cuda-<version>-win_amd64.whl
+   ```
+
+> [!NOTE]
+> If you have a previous manually-installed (not via `pip`) version of OpenCV (e.g. a `cv2` module in the root of Python's site-packages), remove it before installing to avoid conflicts. Also make sure your `pip` is up to date (19.3 is the minimum supported version): `pip install --upgrade pip`.
+
+## What's included
+
+- All OpenCV modules that can be built with CUDA support
+- Hardware-accelerated video decoding and encoding via NVDEC/NVENC (`cv2.cudacodec`)
+- FFmpeg for video I/O
+- All required CUDA runtime libraries, bundled in the wheel
+
+Non-free algorithms (e.g. SURF) are excluded - see the FAQ below.
+
+## Documentation
+
+- [Project homepage](https://breakthrough.github.io/opencv-python-cuda/) - downloads and overview
+- [CUDA Compatibility Reference](https://breakthrough.github.io/opencv-python-cuda/cuda-compatibility.html) - GPU architectures, compute capabilities, and CUDA toolkit support
+- [Workflow Guide](https://breakthrough.github.io/opencv-python-cuda/workflow.html) - repository setup, triggering builds, and wheel size strategy
+
+## Frequently Asked Questions
+
+For general OpenCV questions, refer to [the FAQ in the upstream project](https://github.com/opencv/opencv-python/?tab=readme-ov-file#frequently-asked-questions).
+
+**Q: Which OpenCV versions are available?**
+
+A: Two release lines are maintained: OpenCV 5.x, built from the `5.x-cuda` branch (the default), and OpenCV 4.x, built from the `4.x-cuda` branch. Both are published to the same package index; use a version specifier such as `"opencv-python-cuda<5"` to select 4.x.
+
+**Q: Why can't I `pip install opencv-python-cuda` from PyPI?**
+
+A: The package is far too large for PyPI and exceeds its [project size limits](https://docs.pypi.org/project-management/storage-limits/). Instead, a [PEP 503](https://peps.python.org/pep-0503/) package index is published at `https://breakthrough.github.io/opencv-python-cuda/packages/`, which points at the wheels on the [Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases). Pass it with `--extra-index-url` as shown in [Installation](#installation), or download the wheel manually.
+
+**Q: Is `--extra-index-url` safe to use?**
+
+A: With `--extra-index-url`, `pip` also consults PyPI for the same package name and picks whichever index offers the highest version. `opencv-python-cuda` is not published on PyPI, so this is a theoretical concern only, but if you want to rule it out entirely, download the wheel from the Releases page and install it by file path instead.
+
+**Q: Why does `import cv2` fail with "DLL load failed"?**
+
+A: The wheel requires an NVIDIA driver to be installed. On machines without one (or with a very old driver), the bundled CUDA and video codec libraries cannot be loaded.
 
 **Q: Why are non-free algorithms excluded?**
 
-A: Non-free algorithms such as SURF are not included in these packages because they are patented / non-free and therefore cannot be distributed as built binaries. Note that SIFT is included in the builds due to patent expiration since OpenCV versions 4.3.0 and 3.4.10. See this issue for more info: https://github.com/skvark/opencv-python/issues/126
+A: Non-free algorithms such as SURF are patented and cannot be distributed as built binaries. Note that SIFT *is* included, due to patent expiration as of OpenCV 4.3.0 / 3.4.10. See [opencv-python#126](https://github.com/skvark/opencv-python/issues/126) for more info.
 
-### Licensing
+## Licensing
 
-Opencv-python-cuda package (scripts in this repository) is available under MIT license.
+The opencv-python-cuda package (i.e. the scripts in this repository) is available under the MIT license.
 
-OpenCV itself is available under [Apache 2](https://github.com/opencv/opencv/blob/master/LICENSE) license.
+- OpenCV itself is available under the [Apache 2](https://github.com/opencv/opencv/blob/master/LICENSE) license.
+- All wheels are distributed with [FFmpeg](http://ffmpeg.org), licensed under the [LGPLv2.1](http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html), and redistributable portions of the NVIDIA&reg; CUDA&trade; SDK under the [NVIDIA Software License Agreement (EULA)](https://docs.nvidia.com/cuda/eula/index.html).
+- The packages include other binaries as well; the full list of licenses can be found in [LICENSE-3RD-PARTY.txt](https://github.com/opencv/opencv-python/blob/master/LICENSE-3RD-PARTY.txt).
 
-Third party package licenses are at [LICENSE-3RD-PARTY.txt](https://github.com/opencv/opencv-python/blob/master/LICENSE-3RD-PARTY.txt).
-
-All wheels are distributed with [FFmpeg](http://ffmpeg.org) licensed under the [LGPLv2.1](http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html), and redistributable portions of the NVIDIA® CUDA™ SDK under the [NVIDIA Software License Agreement (EULA)](https://docs.nvidia.com/cuda/eula/index.html).
-
-Non-headless Linux wheels ship with [Qt 5](http://doc.qt.io/qt-5/lgpl.html) licensed under the [LGPLv3](http://www.gnu.org/licenses/lgpl-3.0.html).
-
-The packages include also other binaries. Full list of licenses can be found from [LICENSE-3RD-PARTY.txt](https://github.com/opencv/opencv-python/blob/master/LICENSE-3RD-PARTY.txt).
+By downloading and using the software, you agree to fully comply with the terms and conditions of the CUDA EULA.
