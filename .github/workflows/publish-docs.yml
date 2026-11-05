@@ -4,9 +4,11 @@ name: Publish Docs
 # gh-pages branch. The index lists wheel assets from GitHub Releases so users
 # can `pip install opencv-python-cuda --extra-index-url <site>/packages/`.
 on:
+  # Keep this file identical on 4.x-cuda and 5.x-cuda: release events run the
+  # copy in the tagged commit, which can be on either branch.
   push:
     branches:
-      - 4.x-cuda
+      - 5.x-cuda
     paths:
       - 'docs/**.html'
       - 'docs/**.css'
@@ -28,8 +30,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Release events check out the tagged commit; always deploy from 4.x-cuda.
-          ref: 4.x-cuda
+          # Release events check out the tagged commit; always deploy the docs
+          # from the repository's default branch instead.
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
