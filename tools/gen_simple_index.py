@@ -18,6 +18,14 @@ downloaded. Draft releases are skipped; prereleases are included unless
 --stable-only is given. Exits nonzero if no wheels were found, so an empty
 index is never deployed.
 
+Rebuilds of the same OpenCV version differ only in the local version label
+(e.g. 5.0.0+ac50fea vs 5.0.0+945546e). PEP 440 compares those labels as
+strings, so pip would pick whichever git hash sorts last, not the newest build.
+To fix that, every wheel whose public version also appears in a more recently
+published release is marked yanked (PEP 592 data-yanked). pip and uv ignore
+yanked files unless the exact version is pinned with ==, so a plain install
+gets the newest build while old pins keep working.
+
 Usage:
     python tools/gen_simple_index.py --out <dir>
     python tools/gen_simple_index.py --json releases.json --out <dir>  (offline)
@@ -96,8 +104,30 @@ def collect_wheels(releases, stable_only=False):
                 "size": asset.get("size", 0),
                 "tag": rel.get("tag_name", ""),
                 "prerelease": bool(rel.get("prerelease")),
+                "published": rel.get("published_at") or rel.get("created_at") or "",
+                "yanked": "",
             })
+    for entries in projects.values():
+        mark_superseded(entries)
     return projects
+
+
+def public_version(filename):
+    """'opencv_python_cuda-5.0.0+945546e-cp37-...whl' -> '5.0.0'."""
+    return filename.split("-")[1].split("+", 1)[0]
+
+
+def mark_superseded(entries):
+    """Yank all but the most recently published release of each public version."""
+    newest = {}
+    for e in entries:
+        v = public_version(e["filename"])
+        if v not in newest or e["published"] > newest[v]["published"]:
+            newest[v] = e
+    for e in entries:
+        latest = newest[public_version(e["filename"])]
+        if e["tag"] != latest["tag"]:
+            e["yanked"] = "Superseded by %s" % latest["tag"]
 
 
 def render_root(projects):
@@ -135,10 +165,13 @@ def render_project(project, entries):
             href += "#sha256=" + e["sha256"]
         size_mib = e["size"] / (1024.0 * 1024.0)
         kind = "prerelease" if e["prerelease"] else "release"
-        lines.append("<!-- %s (%s), %.1f MiB -->" % (e["tag"], kind, size_mib))
-        lines.append('<a href="%s" data-requires-python="%s">%s</a><br>' % (
+        note = "; yanked: " + e["yanked"] if e["yanked"] else ""
+        lines.append("<!-- %s (%s), %.1f MiB%s -->" % (e["tag"], kind, size_mib, note))
+        yanked_attr = ' data-yanked="%s"' % html.escape(e["yanked"], quote=True) if e["yanked"] else ""
+        lines.append('<a href="%s" data-requires-python="%s"%s>%s</a><br>' % (
             html.escape(href, quote=True),
             html.escape(REQUIRES_PYTHON, quote=True),
+            yanked_attr,
             html.escape(e["filename"]),
         ))
     lines += ["</body>", "</html>", ""]
@@ -182,7 +215,8 @@ def main():
                     render_project(project, entries))
         print("%s: %d wheel(s)" % (project, len(entries)))
         for e in entries:
-            print("  %s  (%s)" % (e["filename"], e["tag"]))
+            print("  %s  (%s)%s" % (e["filename"], e["tag"],
+                                    "  [yanked: %s]" % e["yanked"] if e["yanked"] else ""))
     print("wrote index to %s" % index_dir)
     return 0
 
