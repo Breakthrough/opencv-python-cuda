@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 import glob
 import io
 import os
@@ -588,8 +588,18 @@ def generate_version_file(contrib, headless, rolling, cuda_arch_bin, cuda_arch_p
         version = date.today().strftime('%Y%m%d')
         opencv_version += ".{}".format(version)
     else:
-        # local version identifier, not to be published on PyPI
-        version = git_hash
+        # local version identifier, not to be published on PyPI. Prefix the hash with the
+        # commit's UTC timestamp so rebuilds of the same OpenCV version sort in commit order:
+        # PEP 440 compares a bare "+<hash>" label as a string (effectively random), while a
+        # leading numeric segment compares as an integer. One segment (YYYYMMDDHHMM) because
+        # PEP 440 drops leading zeros in each segment (".0905" would become ".905").
+        commit_time = int(
+            subprocess.check_output(["git", "log", "-1", "--format=%ct", "HEAD"])
+            .splitlines()[0]
+            .decode()
+        )
+        timestamp = datetime.fromtimestamp(commit_time, timezone.utc).strftime("%Y%m%d%H%M")
+        version = "{}.g{}".format(timestamp, git_hash)
         opencv_version += "+{}".format(version)
 
     with open("cv2/version.py", "w") as f:
