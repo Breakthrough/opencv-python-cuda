@@ -23,6 +23,14 @@ on:
 permissions:
   contents: write
 
+# Run deploys one at a time. Publishing a prerelease fires two release events
+# (published + prereleased) at once, and parallel runs race on the gh-pages
+# push ("cannot lock ref"). Queued runs regenerate everything from current
+# state, so if GitHub drops an older pending run, nothing is lost.
+concurrency:
+  group: publish-docs
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
