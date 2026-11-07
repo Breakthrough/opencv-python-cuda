@@ -315,6 +315,8 @@ jobs:
         if ($LastExitCode -ne 0) {throw $LastExitCode}
         python ../tools/check_codec_linked.py
         if ($LastExitCode -ne 0) {throw $LastExitCode}
+        python ../tools/check_cudnn_loading.py
+        if ($LastExitCode -ne 0) {throw $LastExitCode}
       shell: powershell
     # TODO: import cv2 now requires the NVIDIA driver DLLs (nvcuvid.dll /
     # nvEncodeAPI64.dll / nvcuda.dll) after linking the Video Codec SDK, and hosted
