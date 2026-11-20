@@ -1,6 +1,7 @@
 from datetime import date, datetime, timezone
 import glob
 import io
+import json
 import os
 import os.path
 import sys
@@ -23,11 +24,12 @@ def main():
     build_rolling = get_build_env_var_by_name("rolling")
 
     # CUDA architecture configuration - can be overridden via environment variables
-    # CUDA 12.x supports: 5.0+ (Maxwell through Hopper)
-    # CUDA 13.x supports: 7.5+ (Turing through Hopper)
+    # CUDA 12.x supports: 5.0+ (Maxwell through Blackwell)
+    # CUDA 13.x supports: 7.5+ (Turing through Blackwell)
     # Reference architectures:
     #   maxwell=5.0;5.2, pascal=6.0;6.1, volta=7.0, turing=7.5,
-    #   ampere=8.0;8.6, lovelace=8.9, hopper=9.0
+    #   ampere=8.0;8.6, lovelace=8.9, hopper=9.0,
+    #   blackwell=10.0 (datacenter), 12.0 (GeForce RTX 50 series)
     cuda_arch_bin = os.environ.get("CUDA_ARCH_BIN", "7.5;8.0;8.6;8.9;9.0")
     cuda_arch_ptx = os.environ.get("CUDA_ARCH_PTX", "9.0")
 
@@ -578,6 +580,13 @@ def generate_version_file(contrib, headless, rolling, cuda_arch_bin, cuda_arch_p
     # identifier. We might need to strip off a "v" suffix if we include that in the repo, but it
     # will greatly simplify things. This can also get out of sync since we cache artifacts now.
 
+    # The CUDA label (for example "cu13") is the first segment of the local version label.
+    # Wheels for different CUDA versions then have different file names. PEP 440 compares
+    # this segment as a string, so a build for a newer CUDA version sorts above a build
+    # for an older CUDA version of the same OpenCV version.
+    cuda_label = get_cuda_version_label()
+    local_segments = [cuda_label] if cuda_label else []
+
     if len(tag) == 1:
         # tag identifies the build and should be a sequential revision number
         version = tag[0]
@@ -591,7 +600,7 @@ def generate_version_file(contrib, headless, rolling, cuda_arch_bin, cuda_arch_p
         # local version identifier, not to be published on PyPI. Prefix the hash with the
         # commit's UTC timestamp so rebuilds of the same OpenCV version sort in commit order:
         # PEP 440 compares a bare "+<hash>" label as a string (effectively random), while a
-        # leading numeric segment compares as an integer. One segment (YYYYMMDDHHMM) because
+        # numeric segment compares as an integer. One segment (YYYYMMDDHHMM) because
         # PEP 440 drops leading zeros in each segment (".0905" would become ".905").
         commit_time = int(
             subprocess.check_output(["git", "log", "-1", "--format=%ct", "HEAD"])
@@ -599,8 +608,10 @@ def generate_version_file(contrib, headless, rolling, cuda_arch_bin, cuda_arch_p
             .decode()
         )
         timestamp = datetime.fromtimestamp(commit_time, timezone.utc).strftime("%Y%m%d%H%M")
-        version = "{}.g{}".format(timestamp, git_hash)
-        opencv_version += "+{}".format(version)
+        local_segments += [timestamp, "g{}".format(git_hash)]
+
+    if local_segments:
+        opencv_version += "+{}".format(".".join(local_segments))
 
     with open("cv2/version.py", "w") as f:
         f.write('opencv_version = "{}"\n'.format(opencv_version))
@@ -611,6 +622,25 @@ def generate_version_file(contrib, headless, rolling, cuda_arch_bin, cuda_arch_p
         f.write("cuda_arch_ptx = {}".format(cuda_arch_ptx))
 
     return opencv_version, contrib, headless, rolling
+
+
+def get_cuda_version_label():
+    """Return the CUDA label for the wheel version, for example "cu13".
+
+    The label is "cu" plus the major version of the CUDA toolkit in CUDA_PATH.
+    Return an empty string if the toolkit version is not known.
+    """
+    cuda_path = os.environ.get("CUDA_PATH", "")
+    if not cuda_path:
+        return ""
+    try:
+        with open(os.path.join(cuda_path, "version.json"), "r") as f:
+            cuda_version = json.load(f)["cuda"]["version"]
+    except (OSError, ValueError, KeyError, TypeError):
+        # No readable version.json. Use the directory name, for example "v13.5".
+        cuda_version = os.path.basename(os.path.normpath(cuda_path)).lstrip("vV")
+    major = str(cuda_version).split(".")[0]
+    return "cu{}".format(major) if major.isdigit() else ""
 
 
 def get_build_env_var_by_name(flag_name):
