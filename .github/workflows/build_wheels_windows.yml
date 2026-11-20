@@ -98,6 +98,28 @@ jobs:
       with:
         submodules: false
         fetch-depth: 0
+    - name: Patch submodules (backport of opencv_contrib PR 4258)
+      # NPP 13 (CUDA 13) gives wrong results for 8-bit erode and dilate with a square mask
+      # of 5x5 or more. The patch is the workaround from opencv_contrib PR 4258, which is
+      # not merged yet. It has an effect only when NPP_VERSION >= 13000, so the CUDA 12
+      # build does not change.
+      shell: bash
+      run: |
+        if [ "${ENABLE_ROLLING}" = "1" ]; then
+          git submodule update --init --recursive --remote opencv opencv_contrib
+        else
+          git submodule update --init --recursive opencv opencv_contrib
+        fi
+        npp_patch=../patches/opencv_contrib-npp13-morphology.patch
+        if git -C opencv_contrib apply --check "$npp_patch" 2>/dev/null; then
+          git -C opencv_contrib apply "$npp_patch"
+          git -C opencv_contrib diff --stat
+        elif git -C opencv_contrib apply --check --reverse "$npp_patch" 2>/dev/null; then
+          echo "The NPP 13 morphology fix is already in opencv_contrib; skipping."
+        else
+          echo "::error::patches/opencv_contrib-npp13-morphology.patch does not apply"
+          exit 1
+        fi
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
