@@ -18,8 +18,8 @@ See the [project homepage](https://breakthrough.github.io/opencv-python-cuda/) f
 ## Requirements
 
 - **Windows x64** (the only platform packages are currently produced for)
-- **NVIDIA GPU** - Maxwell class (GeForce GTX 900 series) or newer
-- **NVIDIA driver** - the wheel links directly against driver libraries, so an up-to-date driver must be installed for `import cv2` to succeed
+- **NVIDIA GPU** - Turing class (GeForce RTX 20 / GTX 16 series) or newer for the default CUDA 13 wheel. Maxwell, Pascal and Volta GPUs (GeForce GTX 900 and GTX 10 series) use the CUDA 12 wheel - see [CUDA variants](#cuda-variants)
+- **NVIDIA driver** - the wheel links directly against driver libraries, so an up-to-date driver must be installed for `import cv2` to succeed. The CUDA 13 wheel needs driver version 580 or newer
 - **Python 3.7 or newer** - a single abi3 wheel covers all supported Python versions
 
 ## Installation
@@ -38,9 +38,26 @@ uv pip install opencv-python-cuda --extra-index-url https://breakthrough.github.
 
 The wheel itself downloads from the [Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases) and its SHA-256 hash is verified during installation. `numpy` and other dependencies still come from PyPI. Then import the `cv2` package as usual.
 
+### CUDA variants
+
+Each release has two wheels. The CUDA version is in the wheel version (`+cu13` or `+cu12`):
+
+| Variant | CUDA | Supported GPUs | Wheel size |
+|---|---|---|---|
+| `cu13` (default) | 13.5 | Turing (GeForce RTX 20 / GTX 16 series) or newer | about 1.4 GB |
+| `cu12` | 12.9 | Maxwell (GeForce GTX 900 series) or newer | about 2.1 GB |
+
+The commands above install the `cu13` wheel. For a GeForce GTX 900 or GTX 10 series GPU, use the `cu12` index. Use it for upgrades too, or `pip` moves you to the `cu13` wheel:
+
+```
+pip install opencv-python-cuda --extra-index-url https://breakthrough.github.io/opencv-python-cuda/packages/cu12/
+```
+
+The two wheels have native kernels for all GPUs they support, up to the GeForce RTX 50 series. The `cu12` wheel also works on newer GPUs. There is a `packages/cu13/` index too, if you want to name the variant.
+
 ### Manual installation
 
-1. Download the latest `opencv_python_cuda-*-win_amd64.whl` from the [Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases).
+1. Download the `cu13` or `cu12` wheel (`opencv_python_cuda-*-win_amd64.whl`) from the [Releases page](https://github.com/Breakthrough/opencv-python-cuda/releases).
 2. Install it with `pip` (or another package manager like `uv`):
 
    ```
