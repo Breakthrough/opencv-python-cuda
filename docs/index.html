@@ -18,7 +18,7 @@
             <div class="chips">
                 <span class="chip">OpenCV 5.0 &amp; 4.x</span>
                 <span class="chip">Windows x64</span>
-                <span class="chip">CUDA 12.x</span>
+                <span class="chip">CUDA 13 &amp; 12</span>
                 <span class="chip">Maxwell (GTX 900) or newer</span>
             </div>
         </div>
@@ -30,8 +30,8 @@
                 <h2>Get started</h2>
                 <!-- Release versions: update the links below when publishing a new release. -->
                 <div class="download-row">
-                    <a href="https://github.com/Breakthrough/opencv-python-cuda/releases/tag/5.0.0-dev1" class="download-button">Download 5.0.0-dev1</a>
-                    <a href="https://github.com/Breakthrough/opencv-python-cuda/releases/tag/4.14.0-dev0" class="all-releases">OpenCV 4.x: 4.14.0-dev0 &rarr;</a>
+                    <a href="https://github.com/Breakthrough/opencv-python-cuda/releases/tag/5.0.0-dev2" class="download-button">Download 5.0.0-dev2</a>
+                    <a href="https://github.com/Breakthrough/opencv-python-cuda/releases/tag/4.14.0-dev1" class="all-releases">OpenCV 4.x: 4.14.0-dev1 &rarr;</a>
                     <a href="https://github.com/Breakthrough/opencv-python-cuda/releases" class="all-releases">all releases &rarr;</a>
                 </div>
                 <ol class="steps">
@@ -43,6 +43,10 @@
                         (see the <a href="https://github.com/opencv/opencv/wiki/OpenCV-Change-Logs" target="_blank">upstream change logs</a>);
                         to stay on OpenCV 4.x, ask for a version below 5:
                         <pre><code>pip install "opencv-python-cuda&lt;5" --extra-index-url https://breakthrough.github.io/opencv-python-cuda/packages/</code></pre>
+                        These commands install the CUDA 13 wheel (<code>+cu13</code>), which needs a Turing class GPU
+                        (GeForce RTX 20 / GTX 16 series) or newer and driver version 580 or newer. For a GeForce
+                        GTX 900 or GTX 10 series GPU, use the CUDA 12 index. Use it for upgrades too:
+                        <pre><code>pip install opencv-python-cuda --extra-index-url https://breakthrough.github.io/opencv-python-cuda/packages/cu12/</code></pre>
                         Or download the <code>.whl</code> file from the release above and install it by path:
                         <pre><code>pip install opencv_python_cuda-*-win_amd64.whl</code></pre>
                     </li>
