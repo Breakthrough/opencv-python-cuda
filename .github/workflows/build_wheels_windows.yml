@@ -40,9 +40,16 @@ jobs:
       matrix:
         python-version: ['3.13']
         platform: [x64]
-        cuda-version: ['12']
+        cuda-version: ['12', '13']
         include:
-          # CUDA 12: Supports Maxwell (5.0) through Blackwell (10.0)
+          # Each entry builds one wheel. The wheel version gets the label "+cu<cuda-version>".
+          #
+          # cuda-arch-bin lists the compute capabilities that get native kernels (SASS).
+          # Blackwell has two: 10.0 (datacenter, B200) and 12.0 (GeForce RTX 50 series).
+          # cuda-arch-ptx 10.0 lets the driver JIT-compile kernels for a GPU that is newer
+          # than 10.0 and has no native kernels in the list.
+          #
+          # CUDA 12: Supports Maxwell (5.0) through Blackwell (12.0).
           # NOTE: windows-2025 images now ship Visual Studio 2026 (v18) without VS2022,
           # which CUDA 12.9 nvcc cannot use as host compiler; windows-2022 keeps VS2022 (v143).
           - cuda-version: '12'
@@ -53,22 +60,23 @@ jobs:
             cudnn-folder: 'cudnn-windows-x86_64-9.28.0.42_cuda12-archive'
             video-codec-sdk-archive: 'Video_Codec_SDK_13.0.37.zip'
             video-codec-sdk-folder: 'Video_Codec_SDK_13.0.37'
-            cuda-arch-bin: '5.0;5.2;6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0;10.0'
+            cuda-arch-bin: '5.0;5.2;6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0;10.0;12.0'
             cuda-arch-ptx: '10.0'
             cache-key: 'nvidia-deps-cuda-12.9.2-cudnn-9.28.0.42-vcsdk-13.0.37'
-          # TODO: Re-enable CUDA 13 after updating to OpenCV 4.13+
-          # CUDA 13: Supports Turing (7.5) through Blackwell (12.0)
-          # - cuda-version: '13'
-          #   runs-on: 'windows-2022'
-          #   cuda-installer: 'cuda_13.5.0_windows_x86_64_network.exe'
-          #   cuda-path-version: 'v13.5'
-          #   cudnn-archive: 'cudnn-windows-x86_64-9.28.0.42_cuda13-archive.zip'
-          #   cudnn-folder: 'cudnn-windows-x86_64-9.28.0.42_cuda13-archive'
-          #   video-codec-sdk-archive: 'Video_Codec_SDK_13.0.37.zip'
-          #   video-codec-sdk-folder: 'Video_Codec_SDK_13.0.37'
-          #   cuda-arch-bin: '7.5;8.0;8.6;8.9;9.0;10.0;12.0'
-          #   cuda-arch-ptx: '12.0'
-          #   cache-key: 'nvidia-deps-cuda-13.5.0-cudnn-9.28.0.42-vcsdk-13.0.37'
+          # CUDA 13: Supports Turing (7.5) through Blackwell (12.0).
+          # CUDA 13 has no support for Maxwell, Pascal and Volta.
+          # The runner stays on windows-2022 (VS2022) until a build with VS2026 is tested.
+          - cuda-version: '13'
+            runs-on: 'windows-2022'
+            cuda-installer: 'cuda_13.5.0_windows_x86_64_network.exe'
+            cuda-path-version: 'v13.5'
+            cudnn-archive: 'cudnn-windows-x86_64-9.28.0.42_cuda13-archive.zip'
+            cudnn-folder: 'cudnn-windows-x86_64-9.28.0.42_cuda13-archive'
+            video-codec-sdk-archive: 'Video_Codec_SDK_13.0.37.zip'
+            video-codec-sdk-folder: 'Video_Codec_SDK_13.0.37'
+            cuda-arch-bin: '7.5;8.0;8.6;8.9;9.0;10.0;12.0'
+            cuda-arch-ptx: '10.0'
+            cache-key: 'nvidia-deps-cuda-13.5.0-cudnn-9.28.0.42-vcsdk-13.0.37'
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       SDIST: 0
@@ -90,6 +98,28 @@ jobs:
       with:
         submodules: false
         fetch-depth: 0
+    - name: Patch submodules (backport of opencv_contrib PR 4258)
+      # NPP 13 (CUDA 13) gives wrong results for 8-bit erode and dilate with a square mask
+      # of 5x5 or more. The patch is the workaround from opencv_contrib PR 4258, which is
+      # not merged yet. It has an effect only when NPP_VERSION >= 13000, so the CUDA 12
+      # build does not change.
+      shell: bash
+      run: |
+        if [ "${ENABLE_ROLLING}" = "1" ]; then
+          git submodule update --init --recursive --remote opencv opencv_contrib
+        else
+          git submodule update --init --recursive opencv opencv_contrib
+        fi
+        npp_patch=../patches/opencv_contrib-npp13-morphology.patch
+        if git -C opencv_contrib apply --check "$npp_patch" 2>/dev/null; then
+          git -C opencv_contrib apply "$npp_patch"
+          git -C opencv_contrib diff --stat
+        elif git -C opencv_contrib apply --check --reverse "$npp_patch" 2>/dev/null; then
+          echo "The NPP 13 morphology fix is already in opencv_contrib; skipping."
+        else
+          echo "::error::patches/opencv_contrib-npp13-morphology.patch does not apply"
+          exit 1
+        fi
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -99,9 +129,9 @@ jobs:
       uses: microsoft/setup-msbuild@v1.1
     - name: Setup NASM
       uses: ilammy/setup-nasm@v1
-    - name: Cache NVIDIA dependencies
+    - name: Restore NVIDIA dependencies from cache
       id: cache-nvidia-deps
-      uses: actions/cache@v3
+      uses: actions/cache/restore@v3
       with:
         path: .deps/Nvidia
         key: ${{ matrix.cache-key }}
@@ -116,18 +146,40 @@ jobs:
         ssh-add - <<< "${SSH_PRIVATE_KEY}"
         ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
         GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 git@github.com:Breakthrough/opencv-python-cuda-deps.git .deps
-        files="Nvidia/${{ matrix.cuda-installer }},Nvidia/${{ matrix.cudnn-archive }},Nvidia/${{ matrix.video-codec-sdk-archive }}"
-        git -C .deps lfs pull --include="$files"
+        cudnn="Nvidia/${{ matrix.cudnn-archive }}"
+        lfs_files="Nvidia/${{ matrix.cuda-installer }},Nvidia/${{ matrix.video-codec-sdk-archive }}"
+        # cuDNN is the largest file, and NVIDIA has a public download for it. Get it from
+        # NVIDIA to save LFS bandwidth. The LFS pointer file in the deps repo has the
+        # SHA-256 of the archive, so the download must be the same file. If not, use LFS.
+        cudnn_sha256=$(sed -n 's/^oid sha256://p' ".deps/$cudnn" | tr -d '\r')
+        cudnn_url="https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/windows-x86_64/${{ matrix.cudnn-archive }}"
+        if curl -fL --retry 3 -o cudnn.tmp "$cudnn_url" && echo "$cudnn_sha256 *cudnn.tmp" | sha256sum -c -; then
+          mv cudnn.tmp ".deps/$cudnn"
+        else
+          echo "::warning::cuDNN download from NVIDIA failed or has a wrong checksum. Using LFS."
+          rm -f cudnn.tmp
+          lfs_files="$lfs_files,$cudnn"
+        fi
+        git -C .deps lfs pull --include="$lfs_files"
+        files="Nvidia/${{ matrix.cuda-installer }},$cudnn,Nvidia/${{ matrix.video-codec-sdk-archive }}"
         # Fail fast if a file is still an LFS pointer (~130 bytes) rather than real content.
         for f in ${files//,/ }; do
           size=$(stat -c %s ".deps/$f")
           echo "$f: $size bytes"
           if [ "$size" -lt 1000000 ]; then
-            echo "::error::$f was not downloaded from LFS"
+            echo "::error::$f was not downloaded"
             exit 1
           fi
         done
       shell: bash
+    - name: Save NVIDIA dependencies to cache
+      # Save the files immediately after the download. A build that fails later
+      # then does not download them from LFS again.
+      if: steps.cache-nvidia-deps.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v3
+      with:
+        path: .deps/Nvidia
+        key: ${{ matrix.cache-key }}
     - name: Install NVIDIA CUDA Toolkit
       run: |
         $installer_path = ".deps/Nvidia/${{ matrix.cuda-installer }}"
@@ -139,7 +191,16 @@ jobs:
         echo "Adding CUDA to PATH..."
         $CUDA_PATH = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\${{ matrix.cuda-path-version }}"
         echo "CUDA_PATH=$CUDA_PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
-        Copy-Item -Path "$CUDA_PATH\bin\*.dll" -Destination .
+        # CUDA 13 moved the runtime DLLs from bin\ to bin\x64\.
+        $dll_dir = "$CUDA_PATH\bin\x64"
+        if (-not (Test-Path "$dll_dir\cudart64_*.dll")) {
+          $dll_dir = "$CUDA_PATH\bin"
+        }
+        if (-not (Test-Path "$dll_dir\cudart64_*.dll")) {
+          throw "CUDA runtime DLLs not found in $CUDA_PATH\bin\x64 or $CUDA_PATH\bin"
+        }
+        echo "Copying CUDA DLLs from $dll_dir"
+        Copy-Item -Path "$dll_dir\*.dll" -Destination .
       shell: pwsh
     - name: Install NVIDIA CuDNN
       run: |
@@ -242,6 +303,8 @@ jobs:
 
   Test:
     needs: [Build]
+    # Test each wheel that was built, also when the build for the other CUDA version failed.
+    if: ${{ !cancelled() }}
     runs-on: windows-2022
     defaults:
       run:
@@ -251,7 +314,7 @@ jobs:
       matrix:
         python-version: ['3.12']
         platform: [x64]
-        cuda-version: ['12']  # TODO: Re-enable '13' after updating to OpenCV 4.13+
+        cuda-version: ['12', '13']
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       OPENCV_TEST_DATA_PATH: ${{ github.workspace }}\opencv_extra\testdata
@@ -281,6 +344,12 @@ jobs:
     - name: Package installation
       run: |
         cd ${{ github.workspace }}/tests
+        # The wheel version must have the label of the CUDA version that built it.
+        $wheel = (ls "../wheelhouse/opencv*.whl").Name
+        echo "Wheel: $wheel"
+        if ($wheel -notlike "*+cu${{ matrix.cuda-version }}[.-]*") {
+          throw "Wheel version has no +cu${{ matrix.cuda-version }} label: $wheel"
+        }
         &python -m pip install --user --no-warn-script-location (ls "../wheelhouse/opencv*.whl")
         if ($LastExitCode -ne 0) {throw $LastExitCode}
         python -m pip install --user pefile

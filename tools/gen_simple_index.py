@@ -12,19 +12,30 @@ Output layout (under --out; the "packages" directory name is configurable via
     packages/index.html                    list of projects
     packages/<project>/index.html          one <a> per wheel, href = release
                                            download URL + "#sha256=<hex>"
+    packages/<variant>/...                 the same index with only the wheels
+                                           of one CUDA variant (cu12, cu13, ...)
 
 Hashes come from the GitHub API's per-asset "digest" field, so nothing is
 downloaded. Draft releases are skipped; prereleases are included unless
 --stable-only is given. Exits nonzero if no wheels were found, so an empty
 index is never deployed.
 
-Rebuilds of the same OpenCV version differ only in the local version label
-(e.g. 5.0.0+ac50fea vs 5.0.0+945546e). PEP 440 compares those labels as
-strings, so pip would pick whichever git hash sorts last, not the newest build.
-To fix that, every wheel whose public version also appears in a more recently
-published release is marked yanked (PEP 592 data-yanked). pip and uv ignore
-yanked files unless the exact version is pinned with ==, so a plain install
-gets the newest build while old pins keep working.
+A wheel is built for one CUDA major version. That version is the first segment
+of the local version label (e.g. 5.0.0+cu13.202611200530.gabc1234 is a "cu13"
+wheel). Wheels released before this label existed were built with CUDA 12, so
+they are "cu12" wheels. The main index lists all variants, and pip picks the
+highest label there (the newest CUDA version). To get a specific CUDA version,
+use the index of that variant:
+
+    pip install opencv-python-cuda --extra-index-url https://breakthrough.github.io/opencv-python-cuda/packages/cu12/
+
+Rebuilds of the same OpenCV version and CUDA variant differ only in the rest of
+the local version label (e.g. 5.0.0+ac50fea vs 5.0.0+945546e). PEP 440 compares
+those labels as strings, so pip would pick whichever git hash sorts last, not
+the newest build. To fix that, every wheel whose public version and variant
+also appear in a more recently published release is marked yanked (PEP 592
+data-yanked). pip and uv ignore yanked files unless the exact version is pinned
+with ==, so a plain install gets the newest build while old pins keep working.
 
 Usage:
     python tools/gen_simple_index.py --out <dir>
@@ -44,6 +55,8 @@ DEFAULT_REPO = "Breakthrough/opencv-python-cuda"
 REQUIRES_PYTHON = ">=3.7"
 DEFAULT_INDEX_DIR = "packages"
 API_ROOT = "https://api.github.com"
+# CUDA variant of the wheels that have no CUDA label in the version.
+LEGACY_VARIANT = "cu12"
 
 
 def normalize_name(name):
@@ -117,17 +130,39 @@ def public_version(filename):
     return filename.split("-")[1].split("+", 1)[0]
 
 
+def cuda_variant(filename):
+    """'opencv_python_cuda-5.0.0+cu13.202611200530.gabc1234-cp37-...whl' -> 'cu13'."""
+    version = filename.split("-")[1]
+    local = version.split("+", 1)[1] if "+" in version else ""
+    first = local.split(".")[0]
+    return first if re.match(r"cu\d+$", first) else LEGACY_VARIANT
+
+
 def mark_superseded(entries):
-    """Yank all but the most recently published release of each public version."""
+    """Yank all but the most recently published release of each public version.
+
+    Each CUDA variant is checked separately: a cu13 wheel does not supersede a
+    cu12 wheel of the same public version.
+    """
     newest = {}
     for e in entries:
-        v = public_version(e["filename"])
-        if v not in newest or e["published"] > newest[v]["published"]:
-            newest[v] = e
+        key = (public_version(e["filename"]), cuda_variant(e["filename"]))
+        if key not in newest or e["published"] > newest[key]["published"]:
+            newest[key] = e
     for e in entries:
-        latest = newest[public_version(e["filename"])]
+        latest = newest[(public_version(e["filename"]), cuda_variant(e["filename"]))]
         if e["tag"] != latest["tag"]:
             e["yanked"] = "Superseded by %s" % latest["tag"]
+
+
+def split_variants(projects):
+    """Return {variant: {project: [entry, ...]}} with one index per CUDA variant."""
+    variants = {}
+    for project, entries in projects.items():
+        for e in entries:
+            by_project = variants.setdefault(cuda_variant(e["filename"]), {})
+            by_project.setdefault(project, []).append(e)
+    return variants
 
 
 def render_root(projects):
@@ -185,6 +220,14 @@ def write_ascii(path, text):
         f.write(data)
 
 
+def write_index(index_dir, projects):
+    """Write the root page and one page per project to index_dir."""
+    write_ascii(os.path.join(index_dir, "index.html"), render_root(projects))
+    for project, entries in projects.items():
+        write_ascii(os.path.join(index_dir, project, "index.html"),
+                    render_project(project, entries))
+
+
 def main():
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     ap.add_argument("--repo", default=DEFAULT_REPO, help="OWNER/NAME (default: %(default)s)")
@@ -209,14 +252,15 @@ def main():
         return 1
 
     index_dir = os.path.join(args.out, args.index_dir)
-    write_ascii(os.path.join(index_dir, "index.html"), render_root(projects))
+    write_index(index_dir, projects)
     for project, entries in projects.items():
-        write_ascii(os.path.join(index_dir, project, "index.html"),
-                    render_project(project, entries))
         print("%s: %d wheel(s)" % (project, len(entries)))
         for e in entries:
-            print("  %s  (%s)%s" % (e["filename"], e["tag"],
-                                    "  [yanked: %s]" % e["yanked"] if e["yanked"] else ""))
+            print("  %s  (%s, %s)%s" % (e["filename"], e["tag"], cuda_variant(e["filename"]),
+                                        "  [yanked: %s]" % e["yanked"] if e["yanked"] else ""))
+    for variant, variant_projects in sorted(split_variants(projects).items()):
+        write_index(os.path.join(index_dir, variant), variant_projects)
+        print("%s/: %d wheel(s)" % (variant, sum(len(v) for v in variant_projects.values())))
     print("wrote index to %s" % index_dir)
     return 0
 
