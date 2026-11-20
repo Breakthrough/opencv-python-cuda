@@ -107,9 +107,9 @@ jobs:
       uses: microsoft/setup-msbuild@v1.1
     - name: Setup NASM
       uses: ilammy/setup-nasm@v1
-    - name: Cache NVIDIA dependencies
+    - name: Restore NVIDIA dependencies from cache
       id: cache-nvidia-deps
-      uses: actions/cache@v3
+      uses: actions/cache/restore@v3
       with:
         path: .deps/Nvidia
         key: ${{ matrix.cache-key }}
@@ -124,18 +124,40 @@ jobs:
         ssh-add - <<< "${SSH_PRIVATE_KEY}"
         ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
         GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 git@github.com:Breakthrough/opencv-python-cuda-deps.git .deps
-        files="Nvidia/${{ matrix.cuda-installer }},Nvidia/${{ matrix.cudnn-archive }},Nvidia/${{ matrix.video-codec-sdk-archive }}"
-        git -C .deps lfs pull --include="$files"
+        cudnn="Nvidia/${{ matrix.cudnn-archive }}"
+        lfs_files="Nvidia/${{ matrix.cuda-installer }},Nvidia/${{ matrix.video-codec-sdk-archive }}"
+        # cuDNN is the largest file, and NVIDIA has a public download for it. Get it from
+        # NVIDIA to save LFS bandwidth. The LFS pointer file in the deps repo has the
+        # SHA-256 of the archive, so the download must be the same file. If not, use LFS.
+        cudnn_sha256=$(sed -n 's/^oid sha256://p' ".deps/$cudnn" | tr -d '\r')
+        cudnn_url="https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/windows-x86_64/${{ matrix.cudnn-archive }}"
+        if curl -fL --retry 3 -o cudnn.tmp "$cudnn_url" && echo "$cudnn_sha256 *cudnn.tmp" | sha256sum -c -; then
+          mv cudnn.tmp ".deps/$cudnn"
+        else
+          echo "::warning::cuDNN download from NVIDIA failed or has a wrong checksum. Using LFS."
+          rm -f cudnn.tmp
+          lfs_files="$lfs_files,$cudnn"
+        fi
+        git -C .deps lfs pull --include="$lfs_files"
+        files="Nvidia/${{ matrix.cuda-installer }},$cudnn,Nvidia/${{ matrix.video-codec-sdk-archive }}"
         # Fail fast if a file is still an LFS pointer (~130 bytes) rather than real content.
         for f in ${files//,/ }; do
           size=$(stat -c %s ".deps/$f")
           echo "$f: $size bytes"
           if [ "$size" -lt 1000000 ]; then
-            echo "::error::$f was not downloaded from LFS"
+            echo "::error::$f was not downloaded"
             exit 1
           fi
         done
       shell: bash
+    - name: Save NVIDIA dependencies to cache
+      # Save the files immediately after the download. A build that fails later
+      # then does not download them from LFS again.
+      if: steps.cache-nvidia-deps.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v3
+      with:
+        path: .deps/Nvidia
+        key: ${{ matrix.cache-key }}
     - name: Install NVIDIA CUDA Toolkit
       run: |
         $installer_path = ".deps/Nvidia/${{ matrix.cuda-installer }}"
