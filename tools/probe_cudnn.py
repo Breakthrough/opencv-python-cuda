@@ -49,7 +49,12 @@ def main():
         model = os.path.join(root, "models", name + ".onnx")
         inp = np.load(os.path.join(root, "data", "input_%s.npy" % name))
         ref = np.load(os.path.join(root, "data", "output_%s.npy" % name))
-        net = cv2.dnn.readNet(model)
+        if hasattr(cv2.dnn, "ENGINE_CLASSIC"):
+            # OpenCV 5: the new graph engine ignores the backend and the target, and it runs
+            # on the CPU. Only the classic engine uses the CUDA backend (cuDNN).
+            net = cv2.dnn.readNetFromONNX(model, engine=cv2.dnn.ENGINE_CLASSIC)
+        else:
+            net = cv2.dnn.readNet(model)
         net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
         net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
         net.setInput(inp)
